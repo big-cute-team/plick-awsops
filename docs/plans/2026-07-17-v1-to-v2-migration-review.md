@@ -107,13 +107,33 @@ upstream v1에는 dual-write 계층이 없으므로 **컷오버 당일 백필 �
 11. 시크릿: 데이터소스 재입력 + 헬스체크 green + state/tfvars 보관 정책
 12. 운영 역량: owner가 make configure→migrate→deploy 1회 완주
 
-## 9. 미해결 질문 (owner/fork 실사 필요)
+## 9. 미해결 질문 (owner/fork 확인 필요)
 
-- prod data/ 실물 (memory 사용자·리포트·스케줄·datasources 설정 유무) — SSM 실사
-- 현 접속 도메인 구조 (커스텀 도메인? CloudFront 기본?)
-- SCP가 iam:ListMFADevices 차단하는지 — v2 sync_lambda의 iam_user 쿼리에 `ignore_error_codes` 부재로 차단 시 sync 실패 위험
+- ~~prod data/ 실물~~ → **§10에서 실측 완료**
+- ~~현 접속 도메인 구조~~ → **§10에서 실측 완료**
+- SCP가 iam:ListMFADevices 차단하는지 — v1 CLAUDE.md가 `mfa_enabled`를 SCP 차단 컬럼으로 문서화하고 있어 **차단으로 봐야 함** → v2 sync_lambda의 iam_user 쿼리(`ignore_error_codes` 부재)는 스테이징에서 실패 검증 필수
 - fork의 Phase 4(완전 삭제)가 이후 실제 실행됐는지 + agent.py의 v1/v2 게이트웨이 이름 해석 우선순위(공존기 v1 우선) 실측
 - v2 diagnosis 섹션(base 8/deep 14+intent)과 v1 15섹션의 내용 동등성
 
+## 10. Phase 0 실사 결과 (2026-07-17 실측)
+
+### 호재 — 리스크 4건 해소
+| 항목 | 실측 | 판정 |
+|------|------|------|
+| **도메인** | `awsops.whchoi.net` (CloudFront `E2SN5LJ6IZRHYA`, AwsopsStack) + `whchoi.net` public hosted zone 동일 계정 보유 | ✅ **v2 하드 전제 충족** — fork의 `update-domain-association` 동일 계정 alias 이동 절차 그대로 적용 가능 |
+| **AI 대화 이력** | data/memory/: user dir 0개, 파일 1개 | ✅ 사실상 없음 — "수용 손실" 부담 소멸 |
+| **외부 데이터소스** | config.json datasources = **0건** | ✅ 7종→5종 회귀(Jaeger/Dynatrace/Datadog 탈락) **이 환경에선 무관** |
+| **진단 스케줄** | report-schedule.json 부재 | ✅ 이관 불요 |
+
+### 부담 — 확정된 작업 2건
+| 항목 | 실측 | 필요 작업 |
+|------|------|-----------|
+| **Cognito 사용자** | `AWSops-UserPool`(ap-northeast-2_eLMgNPO18)에 **실사용자 11명** (CONFIRMED 10 + UNCONFIRMED 1) | fork(placeholder 1명)와 결정적으로 다름 — 전원 v2 풀 사전 생성(`admin-set-user-password --permanent`) + 비밀번호 재설정 공지 계획 필수 |
+| **진단 리포트 이력** | data/reports 메타 **41건** (reportBucket=null — 동적 버킷 사용) | v2에서 비가시 — v1 리포트 저장소 보존 정책 필요 |
+
+### 백필 규모 (fork 대비)
+- inventory 42파일 / cost 69파일, data/ 총 23MB (fork 실측: inventory 26 scanned·cost 24 — upstream이 더 큼, dry-run으로 행수 검증)
+- config.json 이관 대상: accounts 1(Host 단일), adminEmails 1, customerName/customerLogo 브랜딩, opencostEndpoint, fargatePricing — 수동 재등록 목록 확정
+
 ---
-*생성: Claude Code 멀티 에이전트 검토 (8 도메인 분석 + 완결성 감사, 2026-07-17)*
+*생성: Claude Code 멀티 에이전트 검토 (8 도메인 분석 + 완결성 감사) + Phase 0 실사, 2026-07-17*

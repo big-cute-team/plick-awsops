@@ -46,6 +46,17 @@ const SECTION_ICONS: Record<string, string> = {
   'storage-analysis': '\u{1F4E6}', 'recommendations': '\u{1F3AF}', 'appendix': '\u{1F4CB}',
 };
 
+// Titles/aliases flow in from stored report metadata and config.json; escape
+// them so stray markup cannot alter the rendered document structure.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderSectionHtml(section: { section?: string; title: string; content: string }, index: number): string {
   const icon = section.section ? (SECTION_ICONS[section.section] || '') : '';
   const htmlContent = marked.parse(section.content, { gfm: true, breaks: false }) as string;
@@ -55,7 +66,7 @@ function renderSectionHtml(section: { section?: string; title: string; content: 
     <div style="${pageBreak}">
       <div style="display:flex; align-items:center; gap:10px; margin-top:32px; margin-bottom:12px;">
         <span style="font-size:20px;">${icon}</span>
-        <h2 style="font-size:18px; font-weight:700; color:#111827; margin:0;">${index + 1}. ${section.title}</h2>
+        <h2 style="font-size:18px; font-weight:700; color:#111827; margin:0;">${index + 1}. ${escapeHtml(section.title)}</h2>
       </div>
       <div style="width:48px; height:2px; background:#2563eb; margin-bottom:16px;"></div>
       <div class="md-content">${htmlContent}</div>
@@ -71,7 +82,7 @@ function buildFullHtml(input: ReportInput): string {
     `<div style="display:flex; align-items:center; gap:10px; padding:3px 0;">
       <span style="color:#9ca3af; font-family:monospace; width:24px;">${i + 1}.</span>
       <span>${s.section ? (SECTION_ICONS[s.section] || '') : ''}</span>
-      <span style="color:#374151;">${s.title}</span>
+      <span style="color:#374151;">${escapeHtml(s.title)}</span>
     </div>`
   ).join('\n');
 
@@ -129,9 +140,9 @@ function buildFullHtml(input: ReportInput): string {
 <!-- Cover -->
 <div style="padding-top:48px; margin-bottom:48px;">
   <div style="width:64px; height:4px; background:#2563eb; margin-bottom:24px;"></div>
-  <h1 style="font-size:28px; font-weight:700; color:#111827; margin:0 0 8px;">${input.title}</h1>
+  <h1 style="font-size:28px; font-weight:700; color:#111827; margin:0 0 8px;">${escapeHtml(input.title)}</h1>
   <p style="font-size:16px; color:#2563eb; margin:0 0 4px;">AWS Infrastructure Comprehensive Analysis</p>
-  ${input.accountAlias ? `<p style="font-size:13px; color:#6b7280; margin:0 0 4px;">Account: ${input.accountAlias}</p>` : ''}
+  ${input.accountAlias ? `<p style="font-size:13px; color:#6b7280; margin:0 0 4px;">Account: ${escapeHtml(input.accountAlias)}</p>` : ''}
   <p style="font-size:13px; color:#9ca3af;">${dateStr}</p>
 </div>
 
@@ -170,6 +181,13 @@ export async function generateReportPdf(input: ReportInput): Promise<Buffer> {
 
   try {
     const page = await browser.newPage();
+    // The document is static HTML/CSS with zero subresources. Section content
+    // is AI-generated markdown (indirectly attacker-influenceable via resource
+    // names/tags), so disable JS and abort every outbound request — injected
+    // markup then has no execution path and cannot reach IMDS/VPC endpoints.
+    await page.setJavaScriptEnabled(false);
+    await page.setRequestInterception(true);
+    page.on('request', (r) => { r.abort().catch(() => {}); });
     // 'networkidle0' was dropped from setContent's accepted waitUntil values in
     // puppeteer-core 24.4x; the HTML is fully inlined (no network fetches), so
     // 'load' is equivalent here.

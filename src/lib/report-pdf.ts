@@ -170,7 +170,10 @@ export async function generateReportPdf(input: ReportInput): Promise<Buffer> {
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    // 'networkidle0' was dropped from setContent's accepted waitUntil values in
+    // puppeteer-core 24.4x; the HTML is fully inlined (no network fetches), so
+    // 'load' is equivalent here.
+    await page.setContent(html, { waitUntil: 'load' });
 
     // Use preferCSSPageSize so @page margins from the inlined stylesheet win;
     // otherwise puppeteer's defaults override and the body padding ends up

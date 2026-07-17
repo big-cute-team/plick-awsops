@@ -99,6 +99,7 @@ Steampipe, Next.js 14, Amazon Bedrock AgentCore로 구축.
 - `report-generator.ts` — 종합 진단 데이터 수집 오케스트레이터
 - `report-prompts.ts` — 15섹션 진단 프롬프트 정의
 - `report-docx.ts` — DOCX 리포트 생성 (A4, TOC, 마크다운 변환)
+- `report-pdf.ts` — PDF 리포트 생성 (Puppeteer HTML→PDF, CJK/이모지 폰트, Playwright Chromium 사용)
 - `report-pptx.ts` — PPTX 리포트 생성 (WADD 스타일)
 - `report-scheduler.ts` — 자동 진단 스케줄러 (weekly/biweekly/monthly)
 - `sns-notification.ts` — SNS 이메일 알림 (토픽 생성, 구독 동기화, 진단 완료 발행)
@@ -294,6 +295,7 @@ AWS + Kubernetes operations dashboard with real-time resource monitoring, networ
 - `report-generator.ts` — Diagnosis report data collection orchestrator
 - `report-prompts.ts` — 15-section diagnosis prompt definitions
 - `report-docx.ts` — DOCX report generation (A4, TOC, markdown conversion)
+- `report-pdf.ts` — PDF report generation (Puppeteer HTML→PDF, CJK/emoji fonts, uses Playwright Chromium)
 - `report-pptx.ts` — PPTX report generation (WADD-style)
 - `report-scheduler.ts` — Auto-diagnosis scheduler (weekly/biweekly/monthly)
 - `sns-notification.ts` — SNS email notifications (topic creation, subscription sync, diagnosis completion publish)

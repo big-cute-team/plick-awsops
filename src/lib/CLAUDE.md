@@ -15,6 +15,7 @@
 - `eks-optimize-queries.ts` — EKS 리소스 최적화 (Prometheus 메트릭 디스커버리 + K8s 리소스 수집 + 비용 분석 프롬프트)
 - `report-pptx.ts` — PPTX 리포트 생성 (WADD 스타일: 타이틀바, 요약바, 2컬럼/카드 레이아웃, 인라인 테이블, 마크다운 파싱)
 - `report-docx.ts` — DOCX 리포트 생성 (docx 패키지, A4/라이트 테마, TOC, 마크다운→문단/테이블/블릿 변환, 헤더/푸터/페이지 번호)
+- `report-pdf.ts` — PDF 리포트 생성 (puppeteer-core + marked, Playwright Chromium 바이너리 사용, CJK/컬러 이모지 폰트 — `scripts/02-setup-nextjs.sh`가 폰트/Chromium 설치)
 - `report-scheduler.ts` — 리포트 스케줄러 (주기적 자동 진단, weekly/biweekly/monthly, KST 기준, data/report-schedule.json)
 - `report-generator.ts` / `report-prompts.ts` — 진단 데이터 수집 오케스트레이터 / 15섹션 진단 프롬프트 정의
 - `datasource-client.ts` / `datasource-registry.ts` / `datasource-prompts.ts` — 외부 데이터소스 HTTP 클라이언트(7종, SSRF 방지) / 타입 레지스트리 / AI 쿼리 생성 프롬프트
@@ -50,6 +51,7 @@ Core libraries: Steampipe database connection, SQL query definitions, inventory,
 - `eks-optimize-queries.ts` — EKS resource optimization (Prometheus metric discovery + K8s resource collection + cost analysis prompt)
 - `report-pptx.ts` — PPTX report generation (WADD-style: title bars, summary bars, 2-column/card layouts, inline tables, markdown parsing)
 - `report-docx.ts` — DOCX report generation (docx package, A4/light theme, TOC, markdown→paragraph/table/bullet conversion, header/footer/page numbers)
+- `report-pdf.ts` — PDF report generation (puppeteer-core + marked, uses Playwright Chromium binary, CJK/color-emoji fonts — installed by `scripts/02-setup-nextjs.sh`)
 - `report-scheduler.ts` — Report scheduler (periodic auto-diagnosis, weekly/biweekly/monthly, KST-based, data/report-schedule.json)
 - `report-generator.ts` / `report-prompts.ts` — Diagnosis data collection orchestrator / 15-section diagnosis prompt definitions
 - `datasource-client.ts` / `datasource-registry.ts` / `datasource-prompts.ts` — External datasource HTTP clients (7 platforms, SSRF-protected) / type registry / AI query generation prompts

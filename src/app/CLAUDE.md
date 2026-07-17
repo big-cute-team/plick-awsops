@@ -79,7 +79,7 @@ Next.js 14 App Router 페이지 및 API 라우트. 각 하위 디렉토리는 �
 | `api/bedrock-metrics/route.ts` | Bedrock 모델 사용량 (CloudWatch 메트릭 + AWSops 앱 토큰 통계) |
 | `api/datasources/route.ts` | 외부 데이터소스 CRUD + 쿼리 실행 + AI 쿼리 생성 (SSRF 방지, admin 전용 쿼리) |
 | `api/k8s/route.ts` | EKS kubeconfig 등록 |
-| `api/report/route.ts` | AI 종합 진단 리포트 생성 + S3 저장 + 스케줄링 |
+| `api/report/route.ts` | AI 종합 진단 리포트 생성 + S3 저장 + 스케줄링 + DOCX/MD/PDF 다운로드 (`download-pdf`는 Puppeteer 서버 렌더링) |
 | `api/notification/route.ts` | SNS 이메일 알림 (토픽/구독 관리, 진단 완료 알림) |
 
 ## 규칙
@@ -172,7 +172,7 @@ Next.js 14 App Router pages and API routes. Each subdirectory is a route segment
 | `api/bedrock-metrics/route.ts` | Bedrock model usage metrics (CloudWatch + AWSops app token stats) |
 | `api/datasources/route.ts` | External datasource CRUD + query execution + AI query generation (SSRF-protected, admin-only query) |
 | `api/k8s/route.ts` | EKS kubeconfig registration |
-| `api/report/route.ts` | AI diagnosis report generation + S3 storage + scheduling |
+| `api/report/route.ts` | AI diagnosis report generation + S3 storage + scheduling + DOCX/MD/PDF download (`download-pdf` renders server-side via Puppeteer) |
 | `api/notification/route.ts` | SNS email notifications (topic/subscription management, diagnosis completion alerts) |
 
 ## Rules

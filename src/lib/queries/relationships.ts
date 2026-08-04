@@ -101,6 +101,29 @@ export const queries = {
     FROM aws_rds_db_instance
   `,
 
+  // Route tables -> subnet associations, routes (public/private tiering)
+  routeTables: `
+    SELECT
+      account_id,
+      route_table_id,
+      vpc_id,
+      associations,
+      routes
+    FROM aws_vpc_route_table
+  `,
+
+  // Target groups -> ALB target resolution
+  targetGroups: `
+    SELECT
+      account_id,
+      target_group_arn,
+      target_group_name,
+      vpc_id,
+      load_balancer_arns,
+      target_health_descriptions
+    FROM aws_ec2_target_group
+  `,
+
   // EKS nodes -> instances
   eksNodes: `
     SELECT name, namespace, pod_ip, node_name, phase

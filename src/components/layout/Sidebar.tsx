@@ -85,6 +85,7 @@ const navGroups: NavGroup[] = [
       { labelKey: 'sidebar.cloudfront', href: '/cloudfront-cdn', icon: Globe },
       { labelKey: 'sidebar.waf', href: '/waf', icon: Shield },
       { labelKey: 'sidebar.topology', href: '/topology', icon: GitBranch },
+      { labelKey: 'sidebar.topologyView', href: '/topology-view', icon: Box },
     ],
   },
   {

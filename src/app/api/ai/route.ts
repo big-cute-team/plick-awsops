@@ -64,7 +64,7 @@ interface RouteConfig {
   description: string;         // What this route handles / 이 라우트가 처리하는 것
   tools: string[];             // Available tool capabilities / 사용 가능한 도구 기능
   examples?: string[];         // Classification examples / 분류 예시
-  handler?: 'code' | 'sql' | 'datasource' | 'auto-collect';   // Special handler type / 특수 핸들러 타입 (code: Code Interpreter, sql: pg Pool 직접, datasource: 외부 데이터소스, auto-collect: 자동 데이터 수집 분석)
+  handler?: 'code' | 'sql' | 'datasource' | 'auto-collect' | 'topology';   // Special handler type / 특수 핸들러 타입 (code: Code Interpreter, sql: pg Pool 직접, datasource: 외부 데이터소스, auto-collect: 자동 데이터 수집 분석, topology: 토폴로지뷰 링크)
 }
 
 const ROUTE_REGISTRY: Record<string, RouteConfig> = {
@@ -188,6 +188,18 @@ const ROUTE_REGISTRY: Record<string, RouteConfig> = {
       '"네트워크 현황" → aws-data', '"인프라 구성 보여줘" → aws-data',
     ],
     handler: 'sql',
+  },
+  topology: {
+    gateway: '',
+    display: 'Topology View',
+    description: 'Isometric VPC topology diagram — resolves the target VPC and links to the Topology View tab (/topology-view)',
+    tools: ['VPC 토폴로지 다이어그램 표시', 'VPC 선택/전환', '빈 서브넷 포함 옵션'],
+    examples: [
+      '"토폴로지 보여줘" → topology', '"VPC 구성도 보여줘" → topology',
+      '"jaeho.p-vpc 다이어그램 보여줘" → topology', '"show the vpc topology diagram" → topology',
+      '"구성도 그려줘" → topology', '"빈 서브넷도 포함해서 구성도 보여줘" → topology',
+    ],
+    handler: 'topology',
   },
   'datasource-diag': {
     gateway: 'monitoring',
@@ -539,6 +551,85 @@ async function queryAWS(sql: string, accountId?: string): Promise<{ data: string
   } catch (e: any) {
     return { data: `Error: ${e.message}`, rowCount: 0, error: e.message };
   }
+}
+
+// Topology View handler: resolve target VPC from conversation + live VPC list
+// 토폴로지뷰 핸들러: 대화 + 실시간 VPC 목록에서 대상 VPC 결정
+interface TopologyParams {
+  vpcId: string | null;
+  vpcName: string | null;
+  vpcCidr: string | null;
+  includeEmpty: boolean;
+}
+
+async function generateTopologyParams(
+  messages: Array<{role: string; content: string}>, accountId?: string
+): Promise<{ params: TopologyParams | null; vpcs: Array<{vpc_id: string; name: string | null; cidr: string}>; error?: string }> {
+  const vpcRes = await runQuery(
+    `SELECT vpc_id, tags ->> 'Name' AS name, cidr_block AS cidr FROM aws_vpc ORDER BY name NULLS LAST`,
+    { accountId }
+  );
+  if (vpcRes.error) return { params: null, vpcs: [], error: vpcRes.error };
+  const vpcs = vpcRes.rows as Array<{vpc_id: string; name: string | null; cidr: string}>;
+  if (vpcs.length === 0) return { params: null, vpcs: [], error: 'no VPCs found' };
+  try {
+    const body = JSON.stringify({
+      anthropic_version: 'bedrock-2023-05-31',
+      max_tokens: 200,
+      system: `The user wants to see a VPC topology diagram. Pick the target VPC from this list:\n${JSON.stringify(vpcs)}\n\nRespond with ONLY a JSON object, no prose:\n{"vpc_id": "<vpc id, or null if you cannot tell which one>", "include_empty": <true only if the user asked to include empty subnets, else false>}\n\nRules: match by VPC name or id mentioned in the conversation (partial/fuzzy match ok). If no VPC is mentioned and there is exactly one VPC, pick it. If several VPCs and none mentioned, use null.`,
+      messages: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
+    });
+    const response = await bedrockClient.send(new InvokeModelCommand({
+      modelId: MODELS['opus-4.8'],
+      contentType: 'application/json',
+      accept: 'application/json',
+      body: new TextEncoder().encode(body),
+    }));
+    const text = JSON.parse(new TextDecoder().decode(response.body)).content?.[0]?.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    const row = vpcs.find(v => v.vpc_id === parsed.vpc_id);
+    return {
+      params: {
+        vpcId: row?.vpc_id || null,
+        vpcName: row?.name || row?.vpc_id || null,
+        vpcCidr: row?.cidr || null,
+        includeEmpty: Boolean(parsed.include_empty),
+      },
+      vpcs,
+    };
+  } catch (err: any) {
+    console.error('[Topology] Param resolution failed:', err.message);
+    return { params: null, vpcs };
+  }
+}
+
+function topologyContent(
+  params: TopologyParams | null,
+  vpcs: Array<{vpc_id: string; name: string | null; cidr: string}>,
+  isEn: boolean,
+  error?: string
+): string {
+  if (error) {
+    return isEn
+      ? `Could not load the VPC list (${error}). Please open the Topology View tab directly: [/topology-view](/topology-view)`
+      : `VPC 목록을 불러오지 못했습니다 (${error}). 토폴로지뷰 탭에서 직접 확인해주세요: [/topology-view](/topology-view)`;
+  }
+  if (params?.vpcId) {
+    const link = `/topology-view?vpc=${params.vpcId}${params.includeEmpty ? '&empty=1' : ''}`;
+    const title = `**${params.vpcName}** (${params.vpcCidr || ''})`;
+    const emptyNote = params.includeEmpty
+      ? (isEn ? ' Empty subnets are included.' : ' 빈 서브넷도 포함했습니다.')
+      : '';
+    return isEn
+      ? `Prepared the isometric topology for ${title}.${emptyNote}\n\n➡️ [Open Topology View](${link})`
+      : `${title} 아이소메트릭 토폴로지를 준비했습니다.${emptyNote}\n\n➡️ [토폴로지뷰 열기](${link})`;
+  }
+  const rows = vpcs.map(v => `| ${v.name || '-'} | \`${v.vpc_id}\` | ${v.cidr} | [${isEn ? 'Open' : '열기'}](/topology-view?vpc=${v.vpc_id}) |`).join('\n');
+  const header = isEn
+    ? 'Multiple VPCs found — which one would you like to see?\n\n| Name | VPC ID | CIDR | Topology |\n|---|---|---|---|\n'
+    : '여러 VPC가 있습니다 — 어느 VPC를 보시겠어요?\n\n| 이름 | VPC ID | CIDR | 토폴로지 |\n|---|---|---|---|\n';
+  return header + rows;
 }
 
 async function generateDatasourceQuery(
@@ -946,6 +1037,7 @@ export async function POST(request: NextRequest) {
     sqlGenerating: isEn ? '📝 Generating SQL...' : '📝 SQL 생성 중...',
     sqlQuerying: (retry: boolean) => isEn ? `🔎 Running Steampipe query...${retry ? ' (retry)' : ''}` : `🔎 Steampipe 쿼리 실행 중...${retry ? ' (재시도)' : ''}`,
     sqlFallback: isEn ? '⚠️ SQL failed, switching to AgentCore...' : '⚠️ SQL 실패, AgentCore로 전환...',
+    topologyResolving: isEn ? '🗺️ Resolving target VPC...' : '🗺️ 대상 VPC 확인 중...',
     multiCall: (count: number) => isEn ? `🤖 Calling ${count} Gateways in parallel...` : `🤖 ${count}개 Gateway 병렬 호출 중...`,
     multiCallProgress: (count: number, sec: number) => isEn ? `🤖 Running ${count} Gateways... (${sec}s)` : `🤖 ${count}개 Gateway 실행 중... (${sec}s)`,
     agentcoreCall: (display: string) => isEn ? `🤖 Calling ${display} tools...` : `🤖 ${display} 도구 호출 중...`,
@@ -1030,6 +1122,21 @@ export async function POST(request: NextRequest) {
               inputTokens: totalInputTokens, outputTokens: totalOutputTokens,
             });
           }
+          controller.close();
+          return;
+        }
+
+        // Handler: Topology View — resolve VPC, reply with a deep link (single-route; multi-route delegates to handleSingleRoute)
+        // 토폴로지뷰 핸들러 — 대상 VPC 결정 후 딥링크로 응답 (단일 라우트; 멀티 라우트는 handleSingleRoute로 위임)
+        if (!isMulti && config.handler === 'topology') {
+          send('status', { step: 'topology-resolving', message: STATUS.topologyResolving });
+          const { params, vpcs, error } = await generateTopologyParams(messages, accountId);
+          const content = topologyContent(params, vpcs, isEn, error);
+          send('done', {
+            content, model: modelKey || 'opus-4.8',
+            via: config.display, queriedResources: ['steampipe'], route,
+            inputTokens: totalInputTokens, outputTokens: totalOutputTokens,
+          });
           controller.close();
           return;
         }
@@ -1429,6 +1536,18 @@ async function handleSingleRoute(
       const result = JSON.parse(new TextDecoder().decode(response.body));
       return { content: result.content?.[0]?.text || '', via: `${config.display} (${queryResult.rowCount} rows)`, queriedResources: ['steampipe'] };
     }
+  }
+
+  // Topology View handler (non-streaming, for multi-route participation)
+  // 토폴로지뷰 핸들러 (비스트리밍, 멀티 라우트 참여용)
+  if (config.handler === 'topology') {
+    const isEn = lang === 'en';
+    const { params, vpcs, error } = await generateTopologyParams(messages, accountId);
+    return {
+      content: topologyContent(params, vpcs, isEn, error),
+      via: config.display,
+      queriedResources: ['steampipe'],
+    };
   }
 
   // Datasource handler (non-streaming, for multi-route participation)

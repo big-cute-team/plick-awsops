@@ -24,7 +24,7 @@ function TopologyViewContent() {
   const [data, setData] = useState<Record<string, { rows?: any[] }>>({});
   const [loading, setLoading] = useState(true);
   const [vpc, setVpc] = useState<string>(searchParams.get('vpc') || '');
-  const [includeEmpty, setIncludeEmpty] = useState(false);
+  const [includeEmpty, setIncludeEmpty] = useState(searchParams.get('empty') === '1');
 
   const fetchData = useCallback(
     async (bustCache = false) => {

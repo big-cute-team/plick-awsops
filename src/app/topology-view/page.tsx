@@ -42,6 +42,9 @@ function TopologyViewContent() {
               nat: relQ.natRelations,
               routeTables: relQ.routeTables,
               targetGroups: relQ.targetGroups,
+              igw: relQ.igwRelations,
+              tgw: relQ.tgwRelations,
+              rds: relQ.rdsRelations,
             },
           }),
         });
@@ -66,6 +69,9 @@ function TopologyViewContent() {
       nat: data.nat?.rows || [],
       routeTables: data.routeTables?.rows || [],
       targetGroups: data.targetGroups?.rows || [],
+      igw: data.igw?.rows || [],
+      tgw: data.tgw?.rows || [],
+      rds: data.rds?.rows || [],
     }),
     [data]
   );

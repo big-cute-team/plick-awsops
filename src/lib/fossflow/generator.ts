@@ -16,6 +16,19 @@ export interface TopologyData {
   nat: Row[];
   routeTables: Row[];
   targetGroups: Row[];
+  igw?: Row[];
+  tgw?: Row[];
+  rds?: Row[];
+}
+
+// Layer toggles the topology chat can flip; everything defaults to visible.
+// 채팅이 제어하는 레이어 토글 — 기본은 모두 표시.
+export interface TopologyOptions {
+  includeEmpty?: boolean;
+  showIgw?: boolean;
+  showTgw?: boolean;
+  showRds?: boolean;
+  showEgress?: boolean;
 }
 
 export interface FossflowModel {
@@ -84,8 +97,14 @@ export function listVpcs(vpcSubnets: Row[]): { vpcId: string; name: string; cidr
 export function buildFossflowModel(
   data: TopologyData,
   vpcFilter: string,
-  opts: { includeEmpty?: boolean } = {}
+  opts: TopologyOptions = {}
 ): FossflowModel | null {
+  const show = {
+    igw: opts.showIgw !== false,
+    tgw: opts.showTgw !== false,
+    rds: opts.showRds !== false,
+    egress: opts.showEgress !== false,
+  };
   const vpcMeta = new Map<string, Row>();
   data.vpcSubnets.forEach((r) => {
     if (r.vpc_id && !vpcMeta.has(r.vpc_id)) vpcMeta.set(r.vpc_id, r);
@@ -101,6 +120,11 @@ export function buildFossflowModel(
   const vEc2 = data.ec2.filter((r) => r.vpc_id === vpcId && r.instance_state !== 'terminated');
   const vElb = data.elb.filter((r) => r.vpc_id === vpcId);
   const vNat = data.nat.filter((r) => r.vpc_id === vpcId);
+  const vIgw = show.igw ? (data.igw || []).filter((r) => r.vpc_id === vpcId) : [];
+  const vTgw = show.tgw
+    ? (data.tgw || []).filter((r) => r.resource_id === vpcId && r.state !== 'deleted')
+    : [];
+  const vRds = show.rds ? (data.rds || []).filter((r) => r.vpc_id === vpcId) : [];
   const vSubnets = data.vpcSubnets.filter((s) => s.vpc_id === vpcId && s.subnet_id);
 
   // ---- public/private via route tables ----
@@ -152,6 +176,18 @@ export function buildFossflowModel(
       const tier = isPublic(sid, s.map_public_ip_on_launch) ? 'public' : 'private';
       grid.get(az)![tier].push(s);
     });
+  // RDS instances join their AZ column as a dedicated box (rows carry no subnet_id)
+  // RDS는 subnet_id가 없어 AZ 칼럼에 전용 박스로 배치
+  const rdsByAz = new Map<string, Row[]>();
+  vRds.forEach((r) => {
+    const az = r.availability_zone || 'unknown';
+    if (!rdsByAz.has(az)) rdsByAz.set(az, []);
+    rdsByAz.get(az)!.push(r);
+  });
+  rdsByAz.forEach((_, az) => {
+    if (!grid.has(az)) grid.set(az, { public: [], private: [] });
+  });
+
   const azs = Array.from(grid.keys()).sort();
 
   const subnetLabel = (s: Row) => {
@@ -282,6 +318,34 @@ export function buildFossflowModel(
     return [w, h];
   };
 
+  // RDS box: same footprint rules as a subnet box
+  const placeRdsBox = (rdsRows: Row[], ox: number, oy: number): [number, number] => {
+    const n = Math.max(1, rdsRows.length);
+    const cols = Math.min(n, COLS);
+    const rows = Math.ceil(n / COLS);
+    const w = (cols - 1) * SP + 4;
+    const h = (rows - 1) * SP + 4;
+    addRect(ox, oy, ox + w, oy + h, 'col-prv');
+    addText(ox, oy - 1, 'RDS', 0.25);
+    rdsRows
+      .slice()
+      .sort((a, b) => a.db_instance_identifier.localeCompare(b.db_instance_identifier))
+      .forEach((r, i) => {
+        const cx = ox + 2 + (i % COLS) * SP;
+        const cy = oy + 2 + Math.floor(i / COLS) * SP;
+        addNode(
+          `rds-${r.db_instance_identifier}`,
+          r.db_instance_identifier,
+          'aws-rds',
+          cx,
+          cy,
+          r.engine || '',
+          i % 2 ? LABEL_HIGH : LABEL_LOW
+        );
+      });
+    return [w, h];
+  };
+
   // ---- lay out AZ columns inside the VPC ----
   const albRowH = vElb.length ? SP + 1 : 0;
   let azX = VPC_PAD + 1;
@@ -293,6 +357,7 @@ export function buildFossflowModel(
       ...tiers.public.map((s): [Row, 'pub'] => [s, 'pub']),
       ...tiers.private.map((s): [Row, 'prv'] => [s, 'prv']),
     ];
+    const azRds = rdsByAz.get(az) || [];
     let colW = 0;
     subnets.forEach(([s]) => {
       const sid = s.subnet_id;
@@ -302,12 +367,17 @@ export function buildFossflowModel(
       );
       colW = Math.max(colW, (Math.min(n, COLS) - 1) * SP + 4);
     });
+    if (azRds.length) colW = Math.max(colW, (Math.min(azRds.length, COLS) - 1) * SP + 4);
     let y = azTop + 1;
     addText(azX, azTop - 1, `AZ ${az}`, 0.3);
     subnets.forEach(([s, tier]) => {
       const [, h] = placeSubnet(s, azX, y, tier);
       y += h + GAP_SUBNET;
     });
+    if (azRds.length) {
+      const [, h] = placeRdsBox(azRds, azX, y);
+      y += h + GAP_SUBNET;
+    }
     maxBottom = Math.max(maxBottom, y - GAP_SUBNET);
     azX += colW + GAP_AZ;
   });
@@ -345,6 +415,27 @@ export function buildFossflowModel(
   addText(0, -1, `${vpcName} (${vpcCidr})`, 0.35);
   addNode('internet', 'Internet', 'cloud', Math.floor(vpcW / 2), -3);
 
+  // IGW on the VPC boundary between Internet and the ALB band, labeled with its Name tag
+  // IGW는 VPC 경계(Internet과 ALB 밴드 사이)에 Name 태그로 표기
+  const igwId = vIgw.length ? `igw-node-${vIgw[0].internet_gateway_id}` : null;
+  if (igwId) {
+    addNode(igwId, vIgw[0].name || vIgw[0].internet_gateway_id, 'router', Math.floor(vpcW / 2), 0, 'Internet Gateway');
+  }
+
+  // TGW attachments on the left VPC boundary, labeled with Name tags
+  // TGW 어태치먼트는 VPC 좌측 경계에 Name 태그로 표기
+  vTgw.forEach((t, i) => {
+    addNode(
+      `tgw-node-${t.transit_gateway_attachment_id}`,
+      t.name || t.transit_gateway_id,
+      'aws-transit-gateway',
+      0,
+      Math.floor(vpcH / 2) + i * SP,
+      'Transit Gateway attachment',
+      i % 2 ? LABEL_HIGH : LABEL_LOW
+    );
+  });
+
   // ---- connectors ----
   const seen = new Set<string>();
   const connOnce = (
@@ -360,16 +451,19 @@ export function buildFossflowModel(
     seen.add(key);
     addConn(a, b, color, style, label, width);
   };
+  const ingressHub = igwId || 'internet';
+  if (igwId) connOnce('internet', igwId, 'col-edge', 'SOLID', 'HTTPS');
   albIds.forEach(([iid, e]) => {
-    if (e.scheme === 'internet-facing') connOnce('internet', iid, 'col-edge', 'SOLID', 'HTTPS');
+    if (e.scheme === 'internet-facing')
+      connOnce(ingressHub, iid, 'col-edge', 'SOLID', igwId ? undefined : 'HTTPS');
     resolveTargets(e.arn).forEach((inst) => {
       if (nodeByInstance.has(inst)) connOnce(iid, inst, 'col-edge');
     });
   });
-  if (natItemIds.length) {
+  if (show.egress && natItemIds.length) {
     const nat0 = natItemIds[0];
     nodeByInstance.forEach((inst) => connOnce(inst, nat0, 'col-egress', 'DOTTED', undefined, 4));
-    connOnce(nat0, 'internet', 'col-egress', 'DASHED', undefined, 6);
+    connOnce(nat0, ingressHub, 'col-egress', 'DASHED', undefined, 6);
   }
 
   // ---- recenter layout on the origin (initial camera looks at tile 0,0) ----

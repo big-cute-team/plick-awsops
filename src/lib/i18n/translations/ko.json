@@ -672,6 +672,9 @@
   "cost.costUnavailable": "이 계정에서 Cost Explorer를 사용할 수 없습니다",
   "cost.snapshotFallback": "스냅샷 데이터 표시 (마지막 사용 가능한 비용 데이터)",
 
+  "inventory.exportXlsx": "XLSX 다운로드",
+  "inventory.exporting": "생성 중...",
+  "inventory.exportingHint": "리소스별 시트를 생성하고 있습니다 (수 초 소요)",
   "inventory.title": "리소스 인벤토리",
   "inventory.subtitle": "리소스 수량 및 추이",
   "inventory.resourceType": "리소스 유형",

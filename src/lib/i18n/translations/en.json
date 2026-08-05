@@ -672,6 +672,9 @@
   "cost.costUnavailable": "Cost Explorer is not available for this account",
   "cost.snapshotFallback": "Showing snapshot data (last available cost data)",
 
+  "inventory.exportXlsx": "Download XLSX",
+  "inventory.exporting": "Generating...",
+  "inventory.exportingHint": "Building one sheet per resource type (takes a few seconds)",
   "inventory.title": "Resource Inventory",
   "inventory.subtitle": "Resource counts and trends",
   "inventory.resourceType": "Resource Type",

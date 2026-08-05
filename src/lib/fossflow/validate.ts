@@ -24,7 +24,7 @@ export function validateFossflowModel(m: any): string[] {
   });
   m.colors.forEach((c: Row, idx: number) => {
     if (typeof c.id !== 'string' || typeof c.value !== 'string' || c.value.length > 7)
-      issues.push(`colors[${idx}] needs id and <=7-char value`);
+      issues.push(`colors[${idx}] needs id and a <=7-char color value`);
   });
   m.items.forEach((it: Row, idx: number) => {
     if (typeof it.id !== 'string' || typeof it.name !== 'string') {
@@ -75,11 +75,11 @@ export function validateFossflowModel(m: any): string[] {
         const ref = a?.ref || {};
         const keys = Object.keys(ref);
         if (keys.length !== 1) {
-          issues.push(`connector ${c.id || idx} anchor must have exactly one ref key`);
+          issues.push(`connector ${c.id || idx} anchors must have exactly one ref key`);
           return;
         }
         if (ref.item !== undefined && !viewItemIds.has(ref.item))
-          issues.push(`connector ${c.id || idx} anchors missing view item: ${ref.item}`);
+          issues.push(`connector ${c.id || idx} anchors a missing view item: ${ref.item}`);
         if (ref.tile !== undefined && !isCoords(ref.tile))
           issues.push(`connector ${c.id || idx} tile anchor needs {x,y}`);
       });

@@ -86,6 +86,7 @@ const navGroups: NavGroup[] = [
       { labelKey: 'sidebar.waf', href: '/waf', icon: Shield },
       { labelKey: 'sidebar.topology', href: '/topology', icon: GitBranch },
       { labelKey: 'sidebar.topologyView', href: '/topology-view', icon: Box },
+      { labelKey: 'sidebar.diagram', href: '/diagram', icon: FileSearch },
     ],
   },
   {

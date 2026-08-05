@@ -31,6 +31,7 @@ function DiagramContent() {
     excludeSubnets: [],
   });
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [imgFull, setImgFull] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
 
@@ -207,7 +208,7 @@ function DiagramContent() {
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              {d}
+              {d === 'TB' ? t('diagram.vertical') : t('diagram.horizontal')}
             </button>
           ))}
         </div>
@@ -250,12 +251,20 @@ function DiagramContent() {
       </div>
 
       <div className="flex gap-4" style={{ height: 'calc(100vh - 240px)' }}>
-        <div className="flex-1 bg-white rounded-lg border border-navy-600 overflow-auto flex items-start justify-center">
+        <div className="flex-1 bg-white rounded-lg border border-navy-600 overflow-auto p-3">
           {renderError ? (
             <div className="text-sm text-red-400 p-6">{renderError}</div>
           ) : imgUrl ? (
+            // Click toggles fit-to-width <-> natural size (block layout — flex
+            // centering clips oversized images past the scrollable edge)
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={imgUrl} alt="diagram" className="max-w-full h-auto" />
+            <img
+              src={imgUrl}
+              alt="diagram"
+              onClick={() => setImgFull((v) => !v)}
+              title={imgFull ? t('diagram.fitToWidth') : t('diagram.actualSize')}
+              className={`block mx-auto h-auto ${imgFull ? 'max-w-none cursor-zoom-out' : 'max-w-full cursor-zoom-in'}`}
+            />
           ) : (
             <div className="flex items-center justify-center h-full text-sm text-gray-500">
               {rendering ? t('diagram.rendering') : t('topologyView.empty')}

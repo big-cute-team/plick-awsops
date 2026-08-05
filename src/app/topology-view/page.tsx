@@ -116,13 +116,15 @@ function TopologyViewContent() {
 
       <div
         className="bg-white rounded-lg border border-navy-600 overflow-hidden"
-        style={{ height: 'calc(100vh - 240px)' }}
+        // Canvas labels inherit `color` — pin dark text so the dashboard's
+        // dark-theme white text doesn't wash out labels on the white canvas.
+        style={{ height: 'calc(100vh - 240px)', color: '#1f2937' }}
       >
         {model ? (
           // Remount on model identity change — FossFLOW only reads initialData once.
           <Isoflow
             key={`${currentAccountId}:${activeVpc}:${includeEmpty}`}
-            initialData={model as any}
+            initialData={{ ...(model as any), fitToView: true }}
             editorMode="EDITABLE"
           />
         ) : (

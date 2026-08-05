@@ -432,7 +432,7 @@
 
   "topology.title": "Topology Map",
   "topologyView.title": "Topology View",
-  "topologyView.subtitle": "Isometric infrastructure diagram",
+  "topologyView.subtitle": "Infrastructure diagram",
   "topologyView.selectVpc": "Select VPC",
   "topologyView.empty": "No resources to display",
   "topology.subtitle": "Infrastructure and Kubernetes topology maps",

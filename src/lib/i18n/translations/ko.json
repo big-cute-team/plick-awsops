@@ -432,7 +432,7 @@
 
   "topology.title": "토폴로지맵",
   "topologyView.title": "토폴로지뷰",
-  "topologyView.subtitle": "아이소메트릭 인프라 구성도",
+  "topologyView.subtitle": "인프라 구성도",
   "topologyView.selectVpc": "VPC 선택",
   "topologyView.empty": "표시할 리소스가 없습니다",
   "topology.subtitle": "인프라 및 쿠버네티스 토폴로지 맵",

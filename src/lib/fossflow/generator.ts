@@ -42,6 +42,7 @@ const COLORS = [
   { id: 'col-vpc', value: '#ede9fe' },
   { id: 'col-pub', value: '#dcedc8' },
   { id: 'col-prv', value: '#d0e7f5' },
+  { id: 'col-alb', value: '#e2d9f3' },
   { id: 'col-edge', value: '#2563eb' },
   { id: 'col-egress', value: '#9ca3af' },
 ];
@@ -237,6 +238,17 @@ export function buildFossflowModel(
   const nodeByInstance = new Set<string>();
   const natItemIds: string[] = [];
 
+  // Duplicate Name tags (e.g. ASG nodes) get an instance-id suffix so they stay distinguishable
+  // 동일 Name 태그(ASG 노드 등)는 인스턴스 ID 접미사로 구분
+  const nameCount = new Map<string, number>();
+  vEc2.forEach((r) => {
+    if (r.name) nameCount.set(r.name, (nameCount.get(r.name) || 0) + 1);
+  });
+  const ec2Label = (r: Row) => {
+    if (!r.name) return shortId(r.instance_id);
+    return (nameCount.get(r.name) || 0) > 1 ? `${r.name} (${shortId(r.instance_id)})` : r.name;
+  };
+
   const placeSubnet = (s: Row, ox: number, oy: number, tier: 'pub' | 'prv'): [number, number] => {
     const sid = s.subnet_id;
     const residents: ['nat' | 'ec2', Row][] = [
@@ -263,7 +275,7 @@ export function buildFossflowModel(
         natItemIds.push(iid);
       } else {
         const iid = r.instance_id;
-        addNode(iid, r.name || shortId(iid), 'aws-ec2', cx, cy, '', lh);
+        addNode(iid, ec2Label(r), 'aws-ec2', cx, cy, '', lh);
         nodeByInstance.add(iid);
       }
     });
@@ -303,11 +315,15 @@ export function buildFossflowModel(
   const vpcW = Math.max(azX - GAP_AZ + VPC_PAD, 10);
   const vpcH = maxBottom + VPC_PAD - 1;
 
-  // ALBs centered at top inside the VPC
+  // ALBs centered at top inside the VPC, grouped in an ingress band
+  // ALB는 VPC 상단 중앙에 인그레스 밴드로 그룹핑
   const albIds: [string, Row][] = [];
   if (vElb.length) {
     const n = vElb.length;
+    const albY = VPC_PAD + 1;
     const startX = Math.max(VPC_PAD + 1, Math.floor((vpcW - (n - 1) * SP) / 2));
+    addRect(startX - 1, albY - 1, startX + (n - 1) * SP + 1, albY + 1, 'col-alb');
+    addText(startX - 1, albY - 2, 'Load Balancer (ingress)', 0.25);
     [...vElb]
       .sort((a, b) => a.elb_name.localeCompare(b.elb_name))
       .forEach((e, i) => {
@@ -317,7 +333,7 @@ export function buildFossflowModel(
           e.elb_name,
           'aws-elastic-load-balancing',
           startX + i * SP,
-          VPC_PAD + 1,
+          albY,
           e.scheme || '',
           i % 2 ? LABEL_HIGH : LABEL_LOW
         );
@@ -400,6 +416,7 @@ export function buildFossflowModel(
         textBoxes,
       },
     ],
+    // Consumed by the page as fitToView (fossflow fits the diagram on mount)
     fitToScreen: true,
   };
 }

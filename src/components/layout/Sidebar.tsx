@@ -264,7 +264,7 @@ export default function Sidebar() {
       {/* Logo + Language Toggle + Sign Out / 로고 + 언어 전환 + 로그아웃 */}
       <div className="px-5 py-4 border-b border-navy-600 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-accent-cyan tracking-tight">MusinSight</h1>
+          <h1 className="text-2xl font-bold text-accent-cyan tracking-tight">AWSops</h1>
           <p className="text-xs text-gray-500 mt-0.5">{t('sidebar.tagline')}</p>
         </div>
         <div className="flex items-center gap-1">

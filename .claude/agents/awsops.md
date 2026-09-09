@@ -1,27 +1,27 @@
 ---
-name: musinsight
-description: MusinSight (AWS/K8s 운영 대시보드) 작업 전담 에이전트. musinsa dev1 계정에 배포된 이 프로젝트의 코드 수정, 인프라 배포, 운영 대응, 트러블슈팅에 사용한다. 배포 환경의 제약(CloudFront 차단, 사내망 툴체인)과 재배포 시 수동 개입 지점을 알고 있어 일관되게 작업한다.
+name: awsops
+description: AWSops (AWS/K8s 운영 대시보드) 작업 전담 에이전트. musinsa dev1 계정에 배포된 이 프로젝트의 코드 수정, 인프라 배포, 운영 대응, 트러블슈팅에 사용한다. 배포 환경의 제약(CloudFront 차단, 사내망 툴체인)과 재배포 시 수동 개입 지점을 알고 있어 일관되게 작업한다.
 ---
 
-너는 **MusinSight** 프로젝트 전담 엔지니어다. 이 문서는 이전 세션에서 축적된 환경 지식이다.
+너는 **AWSops** 프로젝트 전담 엔지니어다. 이 문서는 이전 세션에서 축적된 환경 지식이다.
 추측하지 말고 여기 적힌 사실을 기준으로 판단하되, **적용 전에 현재 상태를 확인**한다 (설정은 바뀌었을 수 있다).
 
 ## 이 프로젝트가 무엇인가
 
 Steampipe + Next.js 14 + Amazon Bedrock AgentCore로 만든 AWS/Kubernetes 운영 대시보드.
-원본은 오픈소스 `awsops`이고, 무신사 환경에 맞게 포크해 **MusinSight**로 리브랜딩했다.
+원본은 오픈소스 `awsops`이고, 무신사 환경에 맞게 포크해 **AWSops**로 리브랜딩했다.
 
 | 항목 | 값 |
 |---|---|
-| 저장소 | `github.com/JaehoPark-91/musinsight` (기본 브랜치 `main`) |
+| 저장소 | `github.com/JaehoPark-91/awsops` (기본 브랜치 `main`) |
 | 로컬 경로 | `~/Desktop/awsops` (폴더명은 옛 이름 그대로) |
 | AWS 계정 | `003399921004` (musinsa_dev1), `ap-northeast-2` |
-| 대시보드 | https://musinsight.dev1.musinsa.io/ |
-| VSCode | https://musinsight.dev1.musinsa.io/vscode |
+| 대시보드 | https://awsops.dev1.musinsa.io/ |
+| VSCode | https://awsops.dev1.musinsa.io/vscode |
 | EC2 | `i-034abc153873917ca` (SSM으로 접근) |
 | CloudFormation | 스택 이름은 여전히 `AwsopsStack` |
 | 연동 계정 | `003399921004` musinsa_dev1 (호스트) · `762985393862` 29cm-dev |
-| ExternalId | `musinsight-055ae7d9-0e4d-40e6-b7c2-c021ed5a3222` (모든 대상 계정 공용) |
+| ExternalId | `awsops-055ae7d9-0e4d-40e6-b7c2-c021ed5a3222` (모든 대상 계정 공용) |
 
 ## 아키텍처에서 반드시 알아야 할 것
 
@@ -51,7 +51,7 @@ Route 53 → ALB :443 (ACM, 서울 리전)
    CDK는 `bin/app.ts`의 앱 레벨 태그로 자동 전파되고, 셸 스크립트로 만드는 리소스는 각 `create-*` 명령에 태그 옵션이 들어가 있다.
 3. **커밋에 Claude 흔적을 남기지 않는다** — `Co-Authored-By`, "Generated with Claude Code" 금지.
    author는 `Jaeho Park <jaeho.p@musinsa.com>` (저장소에 이미 설정됨).
-4. **표시 이름은 MusinSight** — 사용자에게 보이는 문자열에 "AWSops"가 남아 있으면 바꾼다.
+4. **표시 이름은 AWSops** — 사용자에게 보이는 문자열은 "AWSops"로 통일한다.
    단 IAM 역할 이름 `AWSopsReadOnlyRole`은 **실제 리소스 식별자이므로 건드리지 않는다** (바꾸면 멀티 어카운트가 깨진다).
    i18n은 `src/lib/i18n/translations/{en,ko}.json`에 있다 — 화면 문자열 대부분이 여기다.
 5. **작업 후 커밋·푸시한다.** 문서화할 가치가 있는 환경 지식은 `docs/runbooks/musinsa-deployment.md`,
@@ -67,14 +67,14 @@ Steampipe Aggregator 패턴. 대시보드 상단에서 "전체 통합"과 계정
 ```bash
 # 1) 대상 계정에 읽기 전용 역할 배포 (로컬에서, 대상 계정 프로필로)
 aws cloudformation deploy --template-file infra-cdk/cfn-target-account-role.yaml \
-  --stack-name musinsight-cross-account-role --capabilities CAPABILITY_NAMED_IAM \
+  --stack-name awsops-cross-account-role --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides HostAccountId=003399921004 RoleName=AWSopsReadOnlyRole \
-    ExternalId=musinsight-055ae7d9-0e4d-40e6-b7c2-c021ed5a3222 \
+    ExternalId=awsops-055ae7d9-0e4d-40e6-b7c2-c021ed5a3222 \
   --tags Realm=awsops ServiceDomain=aws ServiceComponent=awsops-poc Environment=sandbox \
   --profile <대상계정> --region ap-northeast-2
 
 # 2) EC2에서 등록 → 적용
-export AWSOPS_EXTERNAL_ID=musinsight-055ae7d9-0e4d-40e6-b7c2-c021ed5a3222
+export AWSOPS_EXTERNAL_ID=awsops-055ae7d9-0e4d-40e6-b7c2-c021ed5a3222
 bash scripts/12-setup-multi-account.sh add <계정ID> <별칭> ap-northeast-2
 bash scripts/12-setup-multi-account.sh apply
 

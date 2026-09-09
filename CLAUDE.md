@@ -1,7 +1,7 @@
-# MusinSight 대시보드 v1.8.0 — Claude 컨텍스트
+# AWSops 대시보드 v1.8.0 — Claude 컨텍스트
 
-> 무신사 배포판. 업스트림 `awsops`에서 포크 — 화면 표기는 MusinSight, 저장소/스택/리소스 이름은 `awsops` 계열 그대로다.
-> 배포 환경 제약과 재배포 시 주의사항: `docs/runbooks/musinsa-deployment.md` · 전담 에이전트: `.claude/agents/musinsight.md`
+> 무신사 배포판. 업스트림 `awsops`에서 포크 — 화면 표기와 저장소/스택/리소스 이름 모두 `awsops` 계열이다.
+> 배포 환경 제약과 재배포 시 주의사항: `docs/runbooks/musinsa-deployment.md` · 전담 에이전트: `.claude/agents/awsops.md`
 
 ## 프로젝트 개요
 실시간 AWS/Kubernetes 리소스 모니터링, 네트워크 문제 해결, CIS 컴플라이언스, AI 기반 분석, 외부 데이터소스 연동, AI 종합 진단을 제공하는 운영 대시보드.
@@ -200,10 +200,10 @@ Step 13: 13-setup-steampipe-systemd.sh   Steampipe systemd 유닛 등록 (Restar
 
 ---
 
-# MusinSight Dashboard v1.8.0 — Claude Context (English)
+# AWSops Dashboard v1.8.0 — Claude Context (English)
 
-> musinsa deployment, forked from upstream `awsops`. UI says MusinSight; repo/stack/resource names keep the `awsops` prefix.
-> Environment constraints and redeploy gotchas: `docs/runbooks/musinsa-deployment.md` · project agent: `.claude/agents/musinsight.md`
+> musinsa deployment, forked from upstream `awsops`. UI label and repo/stack/resource names all use the `awsops` prefix.
+> Environment constraints and redeploy gotchas: `docs/runbooks/musinsa-deployment.md` · project agent: `.claude/agents/awsops.md`
 
 ## Project Overview
 AWS + Kubernetes operations dashboard with real-time resource monitoring, network troubleshooting, CIS compliance, AI-powered analysis, external datasource integration, and AI comprehensive diagnosis. Built with Steampipe, Next.js 14, and Amazon Bedrock AgentCore.

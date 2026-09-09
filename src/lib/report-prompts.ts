@@ -1,5 +1,5 @@
-// MusinSight Well-Architected Deep Dive Report — Section Prompts
-// MusinSight Well-Architected 심층 진단 리포트 — 섹션별 프롬프트
+// AWSops Well-Architected Deep Dive Report — Section Prompts
+// AWSops Well-Architected 심층 진단 리포트 — 섹션별 프롬프트
 // Pillars: Cost Optimization (비용), Security (보안), Reliability (안정성)
 
 export interface SectionPrompt {

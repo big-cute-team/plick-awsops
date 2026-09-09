@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MusinSight 2D report-style diagram renderer: Python diagrams (mingrammer) + Graphviz.
+"""AWSops 2D report-style diagram renderer: Python diagrams (mingrammer) + Graphviz.
 
 Imported from dac-poc (v4, AWS reference-architecture structure — nested clusters
 VPC > AZ (dashed blue) > subnet (green/blue bands) > individual resources.
@@ -184,7 +184,7 @@ from diagrams.aws.compute import EC2
 from diagrams.aws.network import ALB, NATGateway
 from diagrams.onprem.network import Internet
 
-base_name = args.out_name or ("musinsight-%s-diagrams%s"
+base_name = args.out_name or ("awsops-%s-diagrams%s"
                               % (re.sub(r"[^A-Za-z0-9._-]+", "-", vpc_name), args.suffix))
 base = os.path.join(OUTDIR, base_name)
 graph_attr = {"fontsize": "20", "bgcolor": "white", "pad": "0.5",
@@ -215,7 +215,7 @@ def draw(a, b, edge=None):
         a >> b
     edge_count += 1
 
-with Diagram("MusinSight - %s (%s)" % (vpc_name, vpc_cidr),
+with Diagram("AWSops - %s (%s)" % (vpc_name, vpc_cidr),
              filename=base, outformat="png", show=False,
              direction=args.direction, graph_attr=graph_attr):
     internet = Internet("Internet")

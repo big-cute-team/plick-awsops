@@ -750,7 +750,7 @@ export function buildFossflowModel(
   });
 
   return {
-    title: `MusinSight - ${vpcName}`,
+    title: `AWSops - ${vpcName}`,
     description: `Auto-generated from Steampipe data (${vpcId}, ${vpcCidr})`,
     icons: fossflowIcons,
     colors: COLORS,

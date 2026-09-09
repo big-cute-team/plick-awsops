@@ -192,7 +192,7 @@ const ROUTE_REGISTRY: Record<string, RouteConfig> = {
   topology: {
     gateway: '',
     display: 'Topology View',
-    description: 'MusinSight VPC topology diagram — resolves the target VPC and links to the Topology View tab (/topology-view)',
+    description: 'AWSops VPC topology diagram — resolves the target VPC and links to the Topology View tab (/topology-view)',
     tools: ['VPC 토폴로지 다이어그램 표시', 'VPC 선택/전환', '빈 서브넷 포함 옵션'],
     examples: [
       '"토폴로지 보여줘" → topology', '"VPC 구성도 보여줘" → topology',
@@ -392,7 +392,7 @@ Respond with ONLY a JSON object: {"routes": ["<route>"]} or {"routes": ["<route1
 
 const CLASSIFICATION_PROMPT = buildClassificationPrompt();
 
-const BASE_SYSTEM_PROMPT = `You are MusinSight AI Assistant, an expert in AWS cloud operations.
+const BASE_SYSTEM_PROMPT = `You are AWSops AI Assistant, an expert in AWS cloud operations.
 You help users understand and manage their AWS infrastructure.
 You have access to real-time AWS resource data via Steampipe queries.
 When users ask about their resources, analyze the data provided.
@@ -623,8 +623,8 @@ function topologyContent(
       ? (isEn ? ' Empty subnets are included.' : ' 빈 서브넷도 포함했습니다.')
       : '';
     return isEn
-      ? `Prepared the MusinSight topology for ${title}.${emptyNote}\n\n➡️ [Open Topology View](${link})`
-      : `${title} MusinSight 토폴로지를 준비했습니다.${emptyNote}\n\n➡️ [토폴로지뷰 열기](${link})`;
+      ? `Prepared the AWSops topology for ${title}.${emptyNote}\n\n➡️ [Open Topology View](${link})`
+      : `${title} AWSops 토폴로지를 준비했습니다.${emptyNote}\n\n➡️ [토폴로지뷰 열기](${link})`;
   }
   const rows = vpcs.map(v => `| ${v.name || '-'} | \`${v.vpc_id}\` | ${v.cidr} | [${isEn ? 'Open' : '열기'}](/topology-view?vpc=${v.vpc_id}) |`).join('\n');
   const header = isEn

@@ -589,8 +589,8 @@ if [ -z "$CUSTOM_DOMAIN" ]; then
     echo ""
     echo -e "  ${CYAN}커스텀 도메인 설정 (필수) / Custom domain (required)${NC}"
     echo -e "  Route 53 호스팅 존이 있어야 합니다 / Requires Route 53 hosted zone"
-    read -p "  도메인 [musinsight.dev1.musinsa.io]: " CUSTOM_DOMAIN
-    CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-musinsight.dev1.musinsa.io}"
+    read -p "  도메인 [awsops.dev1.musinsa.io]: " CUSTOM_DOMAIN
+    CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-awsops.dev1.musinsa.io}"
 fi
 
 echo ""

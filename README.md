@@ -1,4 +1,4 @@
-# MusinSight 대시보드 v1.8.0
+# AWSops 대시보드 v1.8.0
 
 > Steampipe, Next.js 14, Amazon Bedrock AgentCore 기반 AWS + Kubernetes 운영 대시보드
 
@@ -10,7 +10,7 @@
 
 ## 아키텍처
 
-![MusinSight Architecture](images/awsops_arch_01.png)
+![AWSops Architecture](images/awsops_arch_01.png)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -70,7 +70,7 @@
 | **Overview** | Dashboard | `/` | 18 StatsCards, Live Resources, Charts, Warnings |
 | | AI Assistant | `/ai` | Claude Opus 4.8, SSE streaming, multi-route |
 | | AgentCore | `/agentcore` | Runtime status, 8 Gateways, 125 tools |
-| | Bedrock | `/bedrock` | Model usage, token costs, prompt caching, Account vs MusinSight |
+| | Bedrock | `/bedrock` | Model usage, token costs, prompt caching, Account vs AWSops |
 | | Accounts | /accounts | Multi-account management, target account CRUD (admin only) |
 | **Compute** | EC2 | `/ec2` | Instances + detail panel |
 | | Lambda | `/lambda` | Functions, runtimes, memory/timeout |

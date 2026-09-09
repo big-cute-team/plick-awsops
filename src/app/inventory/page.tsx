@@ -284,7 +284,7 @@ export default function InventoryPage() {
               a.href = url;
               a.download =
                 res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ||
-                'musinsight-inventory.xlsx';
+                'awsops-inventory.xlsx';
               a.click();
               URL.revokeObjectURL(url);
             } catch (err) {

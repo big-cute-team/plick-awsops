@@ -58,7 +58,7 @@ if [ -z "$APP_DOMAIN" ]; then
 fi
 if [ -z "$APP_DOMAIN" ] || [ "$APP_DOMAIN" = "None" ]; then
     echo -e "${RED}오류: 앱 도메인을 확인할 수 없습니다. / ERROR: Cannot determine app domain.${NC}"
-    echo "  export APP_DOMAIN='musinsight.dev1.musinsa.io'"
+    echo "  export APP_DOMAIN='awsops.dev1.musinsa.io'"
     exit 1
 fi
 

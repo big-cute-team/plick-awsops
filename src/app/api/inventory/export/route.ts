@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(new Uint8Array(buf as ArrayBuffer), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="musinsight-inventory-${account}-${date}.xlsx"`,
+        'Content-Disposition': `attachment; filename="awsops-inventory-${account}-${date}.xlsx"`,
         'Cache-Control': 'no-store',
       },
     });

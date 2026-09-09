@@ -11,8 +11,8 @@ general flow; this file only covers what differs here or needs manual interventi
 | 항목 | 값 |
 |---|---|
 | 계정 / Account | `003399921004` (musinsa_dev1), ap-northeast-2 |
-| 대시보드 / Dashboard | `https://musinsight.dev1.musinsa.io/` |
-| VSCode | `https://musinsight.dev1.musinsa.io/vscode` |
+| 대시보드 / Dashboard | `https://awsops.dev1.musinsa.io/` |
+| VSCode | `https://awsops.dev1.musinsa.io/vscode` |
 | 인증 / Auth | Cognito → ALB `authenticate-cognito` (ADR-009) |
 | AI 모델 / Model | `global.anthropic.claude-opus-4-8` (단일) |
 | CMDB 태그 | `Realm=awsops`, `ServiceDomain=aws`, `ServiceComponent=awsops-poc`, `Environment=sandbox` |

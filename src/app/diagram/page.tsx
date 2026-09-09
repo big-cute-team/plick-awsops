@@ -125,7 +125,7 @@ function DiagramContent() {
     if (!imgUrl) return;
     const a = document.createElement('a');
     a.href = imgUrl;
-    a.download = `musinsight-${activeVpcName.replace(/[^A-Za-z0-9._-]+/g, '-')}-diagram.png`;
+    a.download = `awsops-${activeVpcName.replace(/[^A-Za-z0-9._-]+/g, '-')}-diagram.png`;
     a.click();
   };
 

@@ -27,7 +27,7 @@ interface ChatContext {
 
 function systemPrompt(model: any, context: ChatContext, isEn: boolean): string {
   const modelJson = JSON.stringify(model);
-  return `You are the MusinSight topology assistant. The user is viewing a FossFLOW diagram (isometric canvas) of an AWS VPC and wants to modify it through chat.
+  return `You are the AWSops topology assistant. The user is viewing a FossFLOW diagram (isometric canvas) of an AWS VPC and wants to modify it through chat.
 
 CURRENT DIAGRAM MODEL (icons stripped):
 ${modelJson}

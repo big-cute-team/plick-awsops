@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'messages, context required' }, { status: 400 });
     }
     const isEn = lang === 'en';
-    const system = `You are the MusinSight diagram assistant. The user is viewing a 2D AWS reference-architecture PNG (VPC > AZ > subnet bands > resources) and wants to adjust it through chat.
+    const system = `You are the AWSops diagram assistant. The user is viewing a 2D AWS reference-architecture PNG (VPC > AZ > subnet bands > resources) and wants to adjust it through chat.
 
 CONTEXT:
 - Current VPC: ${context.vpcId} (${context.vpcName || ''})

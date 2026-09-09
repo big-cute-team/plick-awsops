@@ -241,7 +241,7 @@ export default function AccountsPage() {
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-amber-400 mb-1">Host Account Setup Required</h3>
                 <p className="text-sm text-gray-400 mb-4">
-                  Register the host account (where MusinSight is running) to enable multi-account monitoring.
+                  Register the host account (where AWSops is running) to enable multi-account monitoring.
                   The host account will be auto-detected from the EC2 instance credentials.
                 </p>
                 <div className="flex items-center gap-3">

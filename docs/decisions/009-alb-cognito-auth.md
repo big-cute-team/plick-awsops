@@ -34,7 +34,7 @@ CloudFront를 제거하고 ALB에서 TLS를 종료한다. Lambda@Edge 대신 ALB
 `authenticate-cognito` 리스너 액션으로 인증한다.
 
 ```
-Route 53 (musinsight.dev1.musinsa.io)
+Route 53 (awsops.dev1.musinsa.io)
   └─ ALB :443  (ACM cert, ap-northeast-2 — regional, not us-east-1)
        ├─ authenticate-cognito  ← auth happens here
        ├─ default        → Dashboard  (EC2 :3000)

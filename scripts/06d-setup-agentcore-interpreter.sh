@@ -38,6 +38,7 @@ echo -e "  ${YELLOW}NOTE: networkConfiguration with networkMode is required${NC}
 CI_RESULT=$(aws bedrock-agentcore-control create-code-interpreter \
     --name awsops_code_interpreter \
     --network-configuration '{"networkMode":"PUBLIC"}' \
+    --tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
     --region "$REGION" --output json 2>&1) || true
 
 CI_ID=$(echo "$CI_RESULT" | python3 -c "import json,sys;print(json.load(sys.stdin).get('codeInterpreterId',''))" 2>/dev/null || echo "N/A")

@@ -31,7 +31,7 @@ export default function ElastiCachePage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -53,7 +53,7 @@ export default function ElastiCachePage() {
       if (clusterList.length > 0) {
         const ids = clusterList.map((c: any) => c.cache_cluster_id).filter(Boolean);
         try {
-          const mRes = await fetch(`/awsops/api/elasticache?clusterIds=${encodeURIComponent(ids.join(','))}&accountId=${currentAccountId}`);
+          const mRes = await fetch(`/api/elasticache?clusterIds=${encodeURIComponent(ids.join(','))}&accountId=${currentAccountId}`);
           const mData = await mRes.json();
           setNodeMetrics(mData.metrics || {});
         } catch {}
@@ -70,7 +70,7 @@ export default function ElastiCachePage() {
     try {
       const detailSql = ecQ.detail.replace(/{id}/g, id);
       const metricSql = ecQ.ecMetrics.replace(/{id}/g, id);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: detailSql, metrics: metricSql } }),
@@ -86,7 +86,7 @@ export default function ElastiCachePage() {
           if (sgIds.length > 0) {
             const sgQueries: Record<string, string> = {};
             sgIds.forEach((sgId: string) => { sgQueries[sgId] = ecQ.ecSgDetail.replace('{sg_id}', sgId); });
-            const sgRes = await fetch('/awsops/api/steampipe', {
+            const sgRes = await fetch('/api/steampipe', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ accountId: currentAccountId, queries: sgQueries }),

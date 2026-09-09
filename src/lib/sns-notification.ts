@@ -149,10 +149,10 @@ export async function notifyReportCompleted(opts: {
 }): Promise<boolean> {
   const { reportId, accountAlias, executiveSummary, pillarScores, downloadUrlDocx, downloadUrlMd } = opts;
   const account = accountAlias || 'Default';
-  const subject = `[AWSops] 종합진단 리포트 완료 — ${account}`;
+  const subject = `[MusinSight] 종합진단 리포트 완료 — ${account}`;
 
   const lines: string[] = [
-    `AWSops 종합진단 리포트가 완료되었습니다.`,
+    `MusinSight 종합진단 리포트가 완료되었습니다.`,
     ``,
     `Account: ${account}`,
     `Report ID: ${reportId}`,
@@ -182,7 +182,7 @@ export async function notifyReportCompleted(opts: {
   }
   lines.push(``);
   lines.push(`※ 다운로드 링크는 1시간 유효합니다.`);
-  lines.push(`※ AWSops 대시보드에서 이전 리포트를 확인할 수 있습니다.`);
+  lines.push(`※ MusinSight 대시보드에서 이전 리포트를 확인할 수 있습니다.`);
 
   return publishNotification(subject, lines.join('\n'));
 }
@@ -198,7 +198,7 @@ export async function notifyBenchmarkCompleted(opts: {
 }): Promise<boolean> {
   const { benchmark, accountAlias, totalControls, alarmCount, okCount } = opts;
   const account = accountAlias || 'Default';
-  const subject = `[AWSops] CIS Benchmark 완료 — ${benchmark}`;
+  const subject = `[MusinSight] CIS Benchmark 완료 — ${benchmark}`;
 
   const lines: string[] = [
     `CIS Benchmark 실행이 완료되었습니다.`,
@@ -217,7 +217,7 @@ export async function notifyBenchmarkCompleted(opts: {
     lines.push(``);
   }
 
-  lines.push(`AWSops 대시보드의 Compliance 페이지에서 상세 결과를 확인할 수 있습니다.`);
+  lines.push(`MusinSight 대시보드의 Compliance 페이지에서 상세 결과를 확인할 수 있습니다.`);
 
   return publishNotification(subject, lines.join('\n'));
 }

@@ -26,7 +26,7 @@ export default function K8sPodsPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

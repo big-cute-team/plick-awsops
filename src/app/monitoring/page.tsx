@@ -36,7 +36,7 @@ export default function MonitoringPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -56,13 +56,13 @@ export default function MonitoringPage() {
         }),
       });
       setData(await res.json());
-      fetch('/awsops/api/steampipe?action=cache-status').then(r => r.json()).then(d => setCacheStatus(d)).catch(() => {});
+      fetch('/api/steampipe?action=cache-status').then(r => r.json()).then(d => setCacheStatus(d)).catch(() => {});
     } catch {} finally { setLoading(false); }
   }, [currentAccountId]);
 
   useEffect(() => {
     fetchData();
-    fetch('/awsops/api/steampipe?action=cache-status').then(r => r.json()).then(d => setCacheStatus(d)).catch(() => {});
+    fetch('/api/steampipe?action=cache-status').then(r => r.json()).then(d => setCacheStatus(d)).catch(() => {});
   }, [fetchData]);
 
   const DATE_RANGES = [
@@ -83,7 +83,7 @@ export default function MonitoringPage() {
         .replace('{instance_id}', instance.instance_id)
         .replace('{period}', String(config.period))
         .replace('{range}', config.range);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { metrics: sql } }),
@@ -160,7 +160,7 @@ export default function MonitoringPage() {
         try {
           const inSql = metQ.ec2NetworkDetail.replace('{metric}', 'NetworkIn').replace('{instance_id}', id);
           const outSql = metQ.ec2NetworkDetail.replace('{metric}', 'NetworkOut').replace('{instance_id}', id);
-          const res = await fetch('/awsops/api/steampipe', {
+          const res = await fetch('/api/steampipe', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ accountId: currentAccountId, queries: { netIn: inSql, netOut: outSql } }),
           });
@@ -198,7 +198,7 @@ export default function MonitoringPage() {
     try {
       const inSql = metQ.ec2NetworkDetail.replace('{metric}', 'NetworkIn').replace('{instance_id}', instanceId);
       const outSql = metQ.ec2NetworkDetail.replace('{metric}', 'NetworkOut').replace('{instance_id}', instanceId);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { netIn: inSql, netOut: outSql } }),
@@ -254,7 +254,7 @@ export default function MonitoringPage() {
     setDetailTitle(`${dbId} - FreeableMemory (Loading...)`);
     try {
       const sql = metQ.rdsMemoryDetail.replace('{db_id}', dbId);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { mem: sql } }),

@@ -21,7 +21,7 @@ export default function WAFPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { summary: wafQ.summary, list: wafQ.webAclList } }),
       });
@@ -35,7 +35,7 @@ export default function WAFPage() {
     setDetailLoading(true);
     try {
       const sql = wafQ.detail.replace('{acl_id}', id).replace('{acl_name}', name);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: sql } }),
       });

@@ -3,7 +3,7 @@
 ## 역할
 Next.js 14 App Router 페이지 및 API 라우트. 각 하위 디렉토리는 라우트 세그먼트.
 
-## 페이지 (36개)
+## 페이지 (40개)
 
 ### Overview (5)
 - `page.tsx` — 대시보드 홈 (20 StatsCards, Cost 가용성 감지, 인벤토리 스냅샷, 캐시 워머 상태 바)
@@ -42,9 +42,12 @@ Next.js 14 App Router 페이지 및 API 라우트. 각 하위 디렉토리는 �
 - `ai-diagnosis/page.tsx` — 종합 진단 (15섹션 AI 분석, TOC 사이드바, 멀티 확장, PPTX/DOCX/PDF 다운로드)
 - `ai-diagnosis/report/page.tsx` — 인쇄용 리포트 (브라우저 Print-to-PDF, 흰 배경, A4 페이지 브레이크)
 
-### Monitoring & Cost (8)
+### Datasources (2)
+- `datasources/page.tsx` — 외부 데이터소스 관리 (7종 CRUD, 연결 테스트, 인증 설정)
+- `datasources/explore/page.tsx` — 데이터소스 탐색 (직접 쿼리 실행, AI 쿼리 생성 — 자연어→PromQL/LogQL/TraceQL/SQL)
+
+### Monitoring & Cost (7)
 - `monitoring/page.tsx` — CPU/메모리/네트워크/Disk I/O
-- `bedrock/page.tsx` — Bedrock 모델 사용량 대시보드 (CloudWatch 메트릭 + AWSops 토큰 추적)
 - `cloudwatch/page.tsx` — CloudWatch 알람
 - `cloudtrail/page.tsx` — CloudTrail 트레일/이벤트
 - `cost/page.tsx` — Cost Explorer (MSP 자동 감지, 스냅샷 폴백)
@@ -57,7 +60,7 @@ Next.js 14 App Router 페이지 및 API 라우트. 각 하위 디렉토리는 �
 - `security/page.tsx` — Public S3, Open SG, Unencrypted EBS, CVE
 - `compliance/page.tsx` — CIS v1.5~v4.0 벤치마크
 
-## API 라우트 (13개)
+## API 라우트 (17개)
 
 | API | 설명 |
 |-----|------|
@@ -74,10 +77,14 @@ Next.js 14 App Router 페이지 및 API 라우트. 각 하위 디렉토리는 �
 | `api/container-cost/route.ts` | ECS 컨테이너 비용 (CloudWatch Container Insights + Fargate 가격) |
 | `api/eks-container-cost/route.ts` | EKS 컨테이너 비용 (OpenCost API + Request 기반 폴백) |
 | `api/bedrock-metrics/route.ts` | Bedrock 모델 사용량 (CloudWatch 메트릭 + AWSops 앱 토큰 통계) |
+| `api/datasources/route.ts` | 외부 데이터소스 CRUD + 쿼리 실행 + AI 쿼리 생성 (SSRF 방지, admin 전용 쿼리) |
+| `api/k8s/route.ts` | EKS kubeconfig 등록 |
+| `api/report/route.ts` | AI 종합 진단 리포트 생성 + S3 저장 + 스케줄링 + DOCX/MD/PDF 다운로드 (`download-pdf`는 Puppeteer 서버 렌더링) |
+| `api/notification/route.ts` | SNS 이메일 알림 (토픽/구독 관리, 진단 완료 알림) |
 
 ## 규칙
 - 모든 페이지 파일은 `'use client'`로 시작
-- 모든 fetch URL에 `/awsops/api/*` 접두사 필수
+- 모든 fetch URL에 `/api/*` 접두사 필수
 - 컴포넌트 임포트는 `import X from '...'` (default export)
 - StatsCard `color`는 이름('cyan') 사용 — hex 아님
 - CloudWatch 메트릭 API: `execFileSync`로 AWS CLI 호출 (shell injection 방지)
@@ -89,7 +96,7 @@ Next.js 14 App Router 페이지 및 API 라우트. 각 하위 디렉토리는 �
 ## Role
 Next.js 14 App Router pages and API routes. Each subdirectory is a route segment.
 
-## Pages (36)
+## Pages (40)
 
 ### Overview (5)
 - `page.tsx` — Dashboard home (20 StatsCards, Cost availability detection, inventory snapshot, cache warmer status)
@@ -128,9 +135,12 @@ Next.js 14 App Router pages and API routes. Each subdirectory is a route segment
 - `ai-diagnosis/page.tsx` — Comprehensive diagnosis (15-section AI analysis, TOC sidebar, multi-expand, PPTX/DOCX/PDF download)
 - `ai-diagnosis/report/page.tsx` — Print-friendly report (browser Print-to-PDF, white background, A4 page breaks)
 
-### Monitoring & Cost (8)
+### Datasources (2)
+- `datasources/page.tsx` — External datasource management (7 platforms CRUD, connection test, auth config)
+- `datasources/explore/page.tsx` — Datasource Explore (direct query execution, AI query generation — natural language to PromQL/LogQL/TraceQL/SQL)
+
+### Monitoring & Cost (7)
 - `monitoring/page.tsx` — CPU/Memory/Network/Disk I/O
-- `bedrock/page.tsx` — Bedrock model usage dashboard (CloudWatch metrics + AWSops token tracking)
 - `cloudwatch/page.tsx` — CloudWatch alarms
 - `cloudtrail/page.tsx` — CloudTrail trails/events
 - `cost/page.tsx` — Cost Explorer (MSP auto-detect, snapshot fallback)
@@ -143,7 +153,7 @@ Next.js 14 App Router pages and API routes. Each subdirectory is a route segment
 - `security/page.tsx` — Public S3, Open SGs, Unencrypted EBS, CVE
 - `compliance/page.tsx` — CIS v1.5~v4.0 benchmarks (431 controls)
 
-## API Routes (13)
+## API Routes (17)
 
 | API | Description |
 |-----|------------|
@@ -160,10 +170,14 @@ Next.js 14 App Router pages and API routes. Each subdirectory is a route segment
 | `api/container-cost/route.ts` | ECS Container Cost (CloudWatch Container Insights + Fargate pricing) |
 | `api/eks-container-cost/route.ts` | EKS Container Cost (OpenCost API + request-based fallback) |
 | `api/bedrock-metrics/route.ts` | Bedrock model usage metrics (CloudWatch + AWSops app token stats) |
+| `api/datasources/route.ts` | External datasource CRUD + query execution + AI query generation (SSRF-protected, admin-only query) |
+| `api/k8s/route.ts` | EKS kubeconfig registration |
+| `api/report/route.ts` | AI diagnosis report generation + S3 storage + scheduling + DOCX/MD/PDF download (`download-pdf` renders server-side via Puppeteer) |
+| `api/notification/route.ts` | SNS email notifications (topic/subscription management, diagnosis completion alerts) |
 
 ## Rules
 - All page files start with `'use client'`
-- All fetch URLs must use `/awsops/api/*` prefix
+- All fetch URLs must use `/api/*` prefix
 - Component imports: `import X from '...'` (default export)
 - StatsCard `color`: names ('cyan') not hex
 - CloudWatch metric APIs use `execFileSync` (no shell injection)

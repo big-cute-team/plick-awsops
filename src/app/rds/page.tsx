@@ -35,7 +35,7 @@ export default function RDSPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -55,7 +55,7 @@ export default function RDSPage() {
       if (instanceList.length > 0) {
         const ids = instanceList.map((r: any) => r.db_instance_identifier).filter(Boolean);
         try {
-          const mRes = await fetch(`/awsops/api/rds?instanceIds=${encodeURIComponent(ids.join(','))}&accountId=${currentAccountId}`);
+          const mRes = await fetch(`/api/rds?instanceIds=${encodeURIComponent(ids.join(','))}&accountId=${currentAccountId}`);
           const mData = await mRes.json();
           setInstanceMetrics(mData.metrics || {});
         } catch {}
@@ -75,7 +75,7 @@ export default function RDSPage() {
     try {
       const detailSql = rdsQ.detail.replace(/{id}/g, id);
       const metricSql = rdsQ.rdsMetrics.replace(/{id}/g, id);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: detailSql, metrics: metricSql } }),
@@ -91,7 +91,7 @@ export default function RDSPage() {
           if (sgIds.length > 0) {
             const sgQueries: Record<string, string> = {};
             sgIds.forEach((sgId: string) => { sgQueries[sgId] = rdsQ.sgInbound.replace('{sg_id}', sgId); });
-            const sgRes = await fetch('/awsops/api/steampipe', {
+            const sgRes = await fetch('/api/steampipe', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ accountId: currentAccountId, queries: sgQueries }),

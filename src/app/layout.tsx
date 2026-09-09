@@ -4,7 +4,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import ClientProviders from "@/components/providers/ClientProviders";
 
 export const metadata: Metadata = {
-  title: "AWSops Dashboard",
+  title: "MusinSight Dashboard",
   description: "AWS + Kubernetes resource dashboard powered by Steampipe",
 };
 

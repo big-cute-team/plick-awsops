@@ -10,7 +10,8 @@ export const queries = {
       i.subnet_id,
       i.private_ip_address,
       i.public_ip_address,
-      tags ->> 'Name' AS name
+      tags ->> 'Name' AS name,
+      tags ->> 'aws:eks:cluster-name' AS eks_cluster
     FROM aws_ec2_instance i
     ORDER BY i.vpc_id, i.subnet_id
   `,
@@ -99,6 +100,94 @@ export const queries = {
       availability_zone,
       endpoint_address
     FROM aws_rds_db_instance
+  `,
+
+  // Route tables -> subnet associations, routes (public/private tiering)
+  routeTables: `
+    SELECT
+      account_id,
+      route_table_id,
+      vpc_id,
+      associations,
+      routes
+    FROM aws_vpc_route_table
+  `,
+
+  // Target groups -> ALB target resolution
+  targetGroups: `
+    SELECT
+      account_id,
+      target_group_arn,
+      target_group_name,
+      vpc_id,
+      load_balancer_arns,
+      target_health_descriptions
+    FROM aws_ec2_target_group
+  `,
+
+  // ElastiCache clusters -> AZ placement (subnet group carries the VPC)
+  elasticache: `
+    SELECT
+      c.cache_cluster_id,
+      c.engine,
+      c.preferred_availability_zone AS availability_zone,
+      g.vpc_id
+    FROM aws_elasticache_cluster c
+    JOIN aws_elasticache_subnet_group g
+      ON c.cache_subnet_group_name = g.cache_subnet_group_name
+  `,
+
+  // MSK clusters -> client subnets
+  msk: `
+    SELECT
+      cluster_name,
+      state,
+      provisioned -> 'BrokerNodeGroupInfo' -> 'ClientSubnets' AS client_subnets
+    FROM aws_msk_cluster
+  `,
+
+  // OpenSearch domains (VPC domains carry subnet ids)
+  opensearch: `
+    SELECT
+      domain_name,
+      engine_version,
+      vpc_options -> 'SubnetIds' AS subnet_ids
+    FROM aws_opensearch_domain
+  `,
+
+  // VPC-attached Lambda functions
+  lambdaVpc: `
+    SELECT
+      name,
+      runtime,
+      vpc_id,
+      vpc_subnet_ids
+    FROM aws_lambda_function
+    WHERE vpc_id IS NOT NULL AND vpc_id != ''
+  `,
+
+  // VPC endpoints -> VPC boundary placement
+  vpcEndpoints: `
+    SELECT
+      vpc_endpoint_id,
+      vpc_id,
+      service_name,
+      vpc_endpoint_type
+    FROM aws_vpc_endpoint
+  `,
+
+  // Account-global resources for the external tray (default-off layers)
+  s3Buckets: `
+    SELECT name, region FROM aws_s3_bucket
+  `,
+  dynamodbTables: `
+    SELECT name FROM aws_dynamodb_table
+  `,
+  cloudfrontDists: `
+    SELECT id, domain_name, aliases FROM aws_cloudfront_distribution
+  `,
+  route53Zones: `
+    SELECT name, private_zone FROM aws_route53_zone
   `,
 
   // EKS nodes -> instances

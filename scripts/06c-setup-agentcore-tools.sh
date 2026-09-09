@@ -42,7 +42,9 @@ aws iam create-role --role-name AWSopsLambdaNetworkRole \
     --assume-role-policy-document '{
         "Version": "2012-10-17",
         "Statement": [{"Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}]
-    }' 2>/dev/null || true
+    }' \
+    --tags Key=Realm,Value=awsops Key=ServiceDomain,Value=aws Key=ServiceComponent,Value=awsops-poc Key=Environment,Value=sandbox \
+    2>/dev/null || true
 
 # Attach managed policies
 for POLICY in AWSLambdaBasicExecutionRole AWSLambdaVPCAccessExecutionRole AmazonVPCFullAccess; do
@@ -126,6 +128,7 @@ for entry in "${STANDARD_LAMBDAS[@]}"; do
         --handler "${HANDLER}.lambda_handler" \
         --role "$LAMBDA_ROLE_ARN" --zip-file "fileb:///tmp/${HANDLER}.zip" \
         --timeout 60 --memory-size 256 \
+        --tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
         --region "$REGION" 2>/dev/null || \
     aws lambda update-function-code \
         --function-name "$FUNC_NAME" --zip-file "fileb:///tmp/${HANDLER}.zip" \
@@ -165,6 +168,7 @@ echo "  EC2 IP: $EC2_IP | VPC: $EC2_VPC | Subnets: $PRIVATE_SUBNETS"
 LAMBDA_SG=$(aws ec2 create-security-group \
     --group-name awsops-lambda-steampipe-sg \
     --description "Lambda SG for Steampipe access" \
+    --tag-specifications 'ResourceType=security-group,Tags=[{Key=Realm,Value=awsops},{Key=ServiceDomain,Value=aws},{Key=ServiceComponent,Value=awsops-poc},{Key=Environment,Value=sandbox}]' \
     --vpc-id "$EC2_VPC" --region "$REGION" \
     --query "GroupId" --output text 2>/dev/null || \
     aws ec2 describe-security-groups \
@@ -226,6 +230,7 @@ for FUNC in "awsops-steampipe-query:steampipe_query" "awsops-istio-mcp:aws_istio
         --handler "${HANDLER}.lambda_handler" \
         --role "$LAMBDA_ROLE_ARN" --zip-file "fileb:///tmp/${HANDLER}_vpc.zip" \
         --timeout 60 --memory-size 256 \
+        --tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
         --vpc-config "SubnetIds=$PRIVATE_SUBNETS,SecurityGroupIds=$LAMBDA_SG" \
         --environment "Variables={STEAMPIPE_HOST=$EC2_IP,STEAMPIPE_PORT=9193,STEAMPIPE_PASSWORD=$SP_PASS}" \
         --region "$REGION" 2>/dev/null || \

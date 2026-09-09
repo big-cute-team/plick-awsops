@@ -218,7 +218,7 @@ export default function DatasourceExplorePage() {
   const fetchDatasources = useCallback(async () => {
     setDsLoading(true);
     try {
-      const res = await fetch('/awsops/api/datasources?action=list');
+      const res = await fetch('/api/datasources?action=list');
       if (!res.ok) throw new Error(`Failed to fetch datasources: ${res.status}`);
       const data = await res.json();
       const list: Datasource[] = data.datasources || [];
@@ -247,7 +247,7 @@ export default function DatasourceExplorePage() {
     setResult(null);
 
     try {
-      const res = await fetch('/awsops/api/datasources', {
+      const res = await fetch('/api/datasources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -283,7 +283,7 @@ export default function DatasourceExplorePage() {
     setAiError(null);
     setGeneratedExplanation(null);
     try {
-      const res = await fetch('/awsops/api/datasources', {
+      const res = await fetch('/api/datasources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -416,7 +416,7 @@ export default function DatasourceExplorePage() {
               {t('datasources.noConfiguredDesc')}
             </p>
             <a
-              href="/awsops/datasources"
+              href="/datasources"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/30 hover:bg-accent-cyan/20 transition-colors"
             >
               <Database size={16} />

@@ -60,7 +60,7 @@ export default function ContainerCostPage() {
     try {
       setLoading(true);
       const acctParam = currentAccountId && currentAccountId !== '__all__' ? `?accountId=${currentAccountId}` : '';
-      const res = await fetch(`/awsops/api/container-cost${acctParam}`);
+      const res = await fetch(`/api/container-cost${acctParam}`);
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const json = await res.json();
       if (json.error) throw new Error(json.error);

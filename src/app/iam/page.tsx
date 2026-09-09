@@ -22,7 +22,7 @@ export default function IAMPage() {
 
   // Admin access check / 관리자 접근 확인
   useEffect(() => {
-    fetch('/awsops/api/steampipe?action=admin-check')
+    fetch('/api/steampipe?action=admin-check')
       .then(r => r.json())
       .then(d => { if (!d.isAdmin) setAccessDenied(true); })
       .catch(() => setAccessDenied(true));
@@ -31,7 +31,7 @@ export default function IAMPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -51,7 +51,7 @@ export default function IAMPage() {
     try {
       const template = type === 'user' ? iamQ.userDetail : iamQ.roleDetail;
       const sql = template.replace('{name}', name);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: sql } }),

@@ -61,7 +61,7 @@ export default function BedrockPage() {
     setLoading(true);
     try {
       const acctParam = currentAccountId && currentAccountId !== '__all__' ? `&accountId=${currentAccountId}` : '';
-      const res = await fetch(`/awsops/api/bedrock-metrics?action=summary&range=${r || range}${acctParam}`);
+      const res = await fetch(`/api/bedrock-metrics?action=summary&range=${r || range}${acctParam}`);
       const data = await res.json();
       setMetrics(data.metrics || []);
       setTotalCost(data.totalCost || 0);
@@ -191,7 +191,7 @@ export default function BedrockPage() {
         <StatsCard label="Models Used" value={metrics.length} icon={Sparkles} color="purple" />
       </div>
 
-      {/* AWSops vs Account Usage Comparison / AWSops vs 계정 전체 사용량 비교 */}
+      {/* MusinSight vs Account Usage Comparison / MusinSight vs 계정 전체 사용량 비교 */}
       {(totals.invocations > 0 || awsopsUsage.totalCalls > 0) && (
         <div className="bg-navy-800 rounded-lg border border-navy-600 p-4">
           <h3 className="text-xs font-mono uppercase text-accent-cyan tracking-wider mb-4 flex items-center gap-2">
@@ -224,11 +224,11 @@ export default function BedrockPage() {
                 </div>
               </div>
             </div>
-            {/* AWSops App Usage / AWSops 앱 사용량 */}
+            {/* MusinSight App Usage / MusinSight 앱 사용량 */}
             <div className="bg-navy-900 rounded-lg border border-accent-cyan/30 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-2 h-2 rounded-full bg-accent-cyan" />
-                <h4 className="text-xs font-mono uppercase text-accent-cyan tracking-wider">AWSops App (Cumulative)</h4>
+                <h4 className="text-xs font-mono uppercase text-accent-cyan tracking-wider">MusinSight App (Cumulative)</h4>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>

@@ -63,7 +63,7 @@ export default function DashboardPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const url = bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe';
+      const url = bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe';
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,19 +103,19 @@ export default function DashboardPage() {
       });
       setData(await res.json());
       // Refresh cache status after data load / 데이터 로드 후 캐시 상태 갱신
-      fetch('/awsops/api/steampipe?action=cache-status').then(r => r.json()).then(d => setCacheStatus(d)).catch(() => {});
+      fetch('/api/steampipe?action=cache-status').then(r => r.json()).then(d => setCacheStatus(d)).catch(() => {});
     } catch {} finally { setLoading(false); }
   }, [costAvailable, currentAccountId]);
 
   // Cost Explorer 가용성 선 확인 / Pre-check cost availability
   useEffect(() => {
     const acctQ = currentAccountId && currentAccountId !== '__all__' ? `&accountId=${currentAccountId}` : '';
-    fetch(`/awsops/api/steampipe?action=cost-check${acctQ}`)
+    fetch(`/api/steampipe?action=cost-check${acctQ}`)
       .then(r => r.json())
       .then(d => setCostAvailable(d.available !== false))
       .catch(() => setCostAvailable(false));
     // Cache warmer status / 캐시 워머 상태 조회
-    fetch('/awsops/api/steampipe?action=cache-status')
+    fetch('/api/steampipe?action=cache-status')
       .then(r => r.json())
       .then(d => setCacheStatus(d))
       .catch(() => {});
@@ -160,12 +160,12 @@ export default function DashboardPage() {
   // CIS benchmark cached result / CIS 벤치마크 캐시 결과
   const [cisSummary, setCisSummary] = useState<any>(null);
   useEffect(() => {
-    fetch('/awsops/api/benchmark?benchmark=cis_v400&action=status')
+    fetch('/api/benchmark?benchmark=cis_v400&action=status')
       .then(r => r.json())
       .then(s => {
         // hasResult가 true면 결과 파일 존재 (status가 done이 아니어도)
         if (s.hasResult) {
-          fetch('/awsops/api/benchmark?benchmark=cis_v400&action=result')
+          fetch('/api/benchmark?benchmark=cis_v400&action=result')
             .then(r => r.json())
             .then(d => {
               // summary.status.ok/alarm/skip/error 구조
@@ -297,7 +297,7 @@ export default function DashboardPage() {
       {/* Row 3: Security, Monitoring & Cost / 보안, 모니터링 & 비용 */}
       <div>
         <h2 className="text-xs font-mono uppercase text-gray-400 tracking-wider mb-3">{t('dashboard.securityMonitoringCost')}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 auto-rows-fr gap-4">
           <CardLink href="/security" className={totalIssues > 0 ? 'ring-1 ring-accent-red/30 rounded-lg' : ''}>
             <StatsCard label={t('dashboard.securityIssues')} value={totalIssues} icon={ShieldCheck}
               color={totalIssues > 0 ? 'red' : 'green'} highlight

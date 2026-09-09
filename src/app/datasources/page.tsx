@@ -158,7 +158,7 @@ export default function DatasourcesPage() {
     setLoading(true);
     setPageError(null);
     try {
-      const res = await fetch('/awsops/api/datasources?action=list');
+      const res = await fetch('/api/datasources?action=list');
       if (res.status === 403) {
         setIsAdmin(false);
         setAccessChecked(true);
@@ -181,7 +181,7 @@ export default function DatasourcesPage() {
   // Load allowed networks (admin-only) / 허용 네트워크 로딩 (관리자 전용)
   const loadAllowedNetworks = useCallback(async () => {
     try {
-      const res = await fetch('/awsops/api/datasources?action=allowlist');
+      const res = await fetch('/api/datasources?action=allowlist');
       if (res.ok) {
         const data = await res.json();
         setAllowedNetworks(data.allowedNetworks || []);
@@ -239,7 +239,7 @@ export default function DatasourcesPage() {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch('/awsops/api/datasources', {
+      const res = await fetch('/api/datasources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -274,7 +274,7 @@ export default function DatasourcesPage() {
         ? { id: editingId, ...form }
         : { action: 'create', datasource: form };
 
-      const res = await fetch('/awsops/api/datasources', {
+      const res = await fetch('/api/datasources', {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -300,7 +300,7 @@ export default function DatasourcesPage() {
     setConfirmDelete(null);
     setPageError(null);
     try {
-      const res = await fetch(`/awsops/api/datasources?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/datasources?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.error) {
         setPageError(data.error);
@@ -335,7 +335,7 @@ export default function DatasourcesPage() {
     setNetworkError(null);
     try {
       const updated = [...allowedNetworks, trimmed];
-      const res = await fetch('/awsops/api/datasources', {
+      const res = await fetch('/api/datasources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'update-allowlist', networks: updated }),
@@ -359,7 +359,7 @@ export default function DatasourcesPage() {
     setNetworkError(null);
     try {
       const updated = allowedNetworks.filter(n => n !== entry);
-      const res = await fetch('/awsops/api/datasources', {
+      const res = await fetch('/api/datasources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'update-allowlist', networks: updated }),
@@ -449,7 +449,7 @@ export default function DatasourcesPage() {
                 onClick={(e) => {
                   e.stopPropagation();
                   const msg = encodeURIComponent(`${row.name} (${row.url}) 연결을 진단해줘`);
-                  router.push(`/awsops/ai?message=${msg}`);
+                  router.push(`/ai?message=${msg}`);
                 }}
                 className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
                 title={t('datasources.diagnose') !== 'datasources.diagnose' ? t('datasources.diagnose') : 'Diagnose'}

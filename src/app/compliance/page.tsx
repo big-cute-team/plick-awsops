@@ -35,7 +35,7 @@ export default function CompliancePage() {
   // NOTE: Compliance uses GET (not POST like other pages) because benchmark API
   // uses Powerpipe CLI with query params (action=start/status/result).
   // accountId is passed as a query param, not in the request body.
-  const BASE = '/awsops/api/benchmark';
+  const BASE = '/api/benchmark';
   const acctParam = currentAccountId && currentAccountId !== '__all__' ? `&accountId=${currentAccountId}` : '';
 
   const checkStatus = useCallback(async () => {

@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
     try {
       await ensureTopic();
       const sent = await publishNotification(
-        '[AWSops] Test Notification',
-        'This is a test notification from AWSops.\nAWSops에서 보낸 테스트 알림입니다.\n\n정상적으로 수신되었다면 알림 설정이 올바르게 구성된 것입니다.'
+        '[MusinSight] Test Notification',
+        'This is a test notification from MusinSight.\nMusinSight에서 보낸 테스트 알림입니다.\n\n정상적으로 수신되었다면 알림 설정이 올바르게 구성된 것입니다.'
       );
       return NextResponse.json({ sent });
     } catch (err) {

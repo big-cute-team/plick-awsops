@@ -14,7 +14,7 @@ const BASE_URL = `http://localhost:${process.env.PORT || 3000}`;
 function apiUrl(path: string, params: Record<string, string>, accountId?: string): string {
   const qs = new URLSearchParams(params);
   if (accountId) qs.set('accountId', accountId);
-  return `${BASE_URL}/awsops/api/${path}?${qs.toString()}`;
+  return `${BASE_URL}/api/${path}?${qs.toString()}`;
 }
 
 // ============================================================================

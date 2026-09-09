@@ -392,7 +392,7 @@ export async function generateReportDocx(input: ReportInput): Promise<Buffer> {
 
   // Build document
   const doc = new Document({
-    creator: 'AWSops Dashboard',
+    creator: 'MusinSight Dashboard',
     title: input.title,
     description: input.subtitle || 'AWS Infrastructure Diagnosis Report',
     styles: {
@@ -446,7 +446,7 @@ export async function generateReportDocx(input: ReportInput): Promise<Buffer> {
           children: [new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: 'AWSops Dashboard  |  Page ', size: 16, color: COLORS.textLight }),
+              new TextRun({ text: 'MusinSight Dashboard  |  Page ', size: 16, color: COLORS.textLight }),
               new TextRun({ children: [PageNumber.CURRENT], size: 16, color: COLORS.textLight }),
             ],
           })],

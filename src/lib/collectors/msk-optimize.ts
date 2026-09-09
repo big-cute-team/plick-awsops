@@ -72,7 +72,7 @@ async function collectKafkaMetrics(ds: any): Promise<{ metrics: KafkaMetricResul
 function apiUrl(path: string, params: Record<string, string>, accountId?: string): string {
   const qs = new URLSearchParams(params);
   if (accountId) qs.set('accountId', accountId);
-  return `${BASE_URL}/awsops/api/${path}?${qs.toString()}`;
+  return `${BASE_URL}/api/${path}?${qs.toString()}`;
 }
 
 // ============================================================================

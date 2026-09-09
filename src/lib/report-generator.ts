@@ -162,7 +162,7 @@ export async function collectReportData(
 
   let complianceScore: any = null;
   try {
-    const benchUrl = `${BASE_URL}/awsops/api/benchmark?action=result&accountId=${accountId || ''}`;
+    const benchUrl = `${BASE_URL}/api/benchmark?action=result&accountId=${accountId || ''}`;
     const benchRes = await fetch(benchUrl, { signal: AbortSignal.timeout(10000) });
     if (benchRes.ok) complianceScore = await benchRes.json();
   } catch { /* benchmark unavailable — non-critical */ }

@@ -28,10 +28,10 @@ export default function AgentCorePage() {
   const fetchStatus = () => {
     setLoading(true);
     Promise.all([
-      fetch('/awsops/api/agentcore').then(r => r.json()),
-      fetch('/awsops/api/agentcore?action=stats').then(r => r.json()),
-      fetch('/awsops/api/agentcore?action=conversations&limit=20').then(r => r.json()),
-      fetch('/awsops/api/agentcore?action=cache-status').then(r => r.json()),
+      fetch('/api/agentcore').then(r => r.json()),
+      fetch('/api/agentcore?action=stats').then(r => r.json()),
+      fetch('/api/agentcore?action=conversations&limit=20').then(r => r.json()),
+      fetch('/api/agentcore?action=cache-status').then(r => r.json()),
     ]).then(([statusData, statsData, convData, cacheData]) => {
       if (!statusData.error) setStatus(statusData);
       setStats(statsData);
@@ -42,12 +42,12 @@ export default function AgentCorePage() {
 
   const searchMemory = async () => {
     if (!memorySearch.trim()) {
-      const res = await fetch('/awsops/api/agentcore?action=conversations&limit=20');
+      const res = await fetch('/api/agentcore?action=conversations&limit=20');
       const data = await res.json();
       setConversations(data.conversations || []);
       return;
     }
-    const res = await fetch(`/awsops/api/agentcore?action=search&q=${encodeURIComponent(memorySearch)}`);
+    const res = await fetch(`/api/agentcore?action=search&q=${encodeURIComponent(memorySearch)}`);
     const data = await res.json();
     setConversations(data.conversations || []);
   };

@@ -28,7 +28,7 @@ export default function CloudTrailPage() {
     setLoading(true);
     try {
       // Only load trails on initial load (events are slow - lazy load on tab click)
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -44,7 +44,7 @@ export default function CloudTrailPage() {
   const fetchEvents = useCallback(async () => {
     if (eventsLoaded && !loading) return;
     try {
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -72,7 +72,7 @@ export default function CloudTrailPage() {
     setDetailType('trail');
     try {
       const sql = ctQ.trailDetail.replace('{name}', name);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: sql } }),

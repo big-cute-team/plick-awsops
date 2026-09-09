@@ -33,7 +33,7 @@ export default function VPCPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -63,7 +63,7 @@ export default function VPCPage() {
     setDetailType(type);
     try {
       const sql = queryTemplate.replace(key, value);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: sql } }),
@@ -79,7 +79,7 @@ export default function VPCPage() {
     setDetailType('vpc');
     try {
       const sql = vpcQ.vpcDetail.replace('{vpc_id}', vpcId);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: sql } }),
@@ -110,7 +110,7 @@ export default function VPCPage() {
     try {
       const detailSql = vpcQ.tgwDetail.replace('{tgw_id}', tgwId);
       const rtSql = vpcQ.tgwRouteTables.replace('{tgw_id}', tgwId);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: detailSql, tgwRTs: rtSql } }),
@@ -125,7 +125,7 @@ export default function VPCPage() {
         rts.forEach((rt: any) => {
           routeQueries[rt.transit_gateway_route_table_id] = vpcQ.tgwRoutes.replace('{rt_id}', rt.transit_gateway_route_table_id);
         });
-        const rRes = await fetch('/awsops/api/steampipe', {
+        const rRes = await fetch('/api/steampipe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ accountId: currentAccountId, queries: routeQueries }),

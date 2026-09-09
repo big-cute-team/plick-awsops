@@ -45,7 +45,7 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
 
   const refetchAccounts = useCallback(async () => {
     try {
-      const r = await fetch('/awsops/api/steampipe?action=config');
+      const r = await fetch('/api/steampipe?action=config');
       const config = await r.json();
       if (config.accounts && config.accounts.length > 0) {
         const fetched: AccountInfo[] = config.accounts.map((a: Record<string, unknown>) => ({

@@ -29,7 +29,7 @@ export default function OpenSearchPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -50,7 +50,7 @@ export default function OpenSearchPage() {
       if (domainList.length > 0) {
         const names = domainList.map((d: any) => d.domain_name).filter(Boolean);
         try {
-          const mRes = await fetch(`/awsops/api/opensearch?domains=${encodeURIComponent(names.join(','))}&accountId=${currentAccountId}`);
+          const mRes = await fetch(`/api/opensearch?domains=${encodeURIComponent(names.join(','))}&accountId=${currentAccountId}`);
           const mData = await mRes.json();
           setDomainMetrics(mData.metrics || {});
         } catch {}
@@ -64,7 +64,7 @@ export default function OpenSearchPage() {
     setDetailLoading(true);
     try {
       const sql = osQ.detail.replace(/{domain_name}/g, domainName);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: sql } }),

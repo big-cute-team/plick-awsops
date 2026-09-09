@@ -85,6 +85,8 @@ const navGroups: NavGroup[] = [
       { labelKey: 'sidebar.cloudfront', href: '/cloudfront-cdn', icon: Globe },
       { labelKey: 'sidebar.waf', href: '/waf', icon: Shield },
       { labelKey: 'sidebar.topology', href: '/topology', icon: GitBranch },
+      { labelKey: 'sidebar.topologyView', href: '/topology-view', icon: Box },
+      { labelKey: 'sidebar.diagram', href: '/diagram', icon: FileSearch },
     ],
   },
   {
@@ -136,7 +138,7 @@ export default function Sidebar() {
   const features = getFeatures();
 
   useEffect(() => {
-    fetch('/awsops/api/steampipe?action=config')
+    fetch('/api/steampipe?action=config')
       .then(r => r.json())
       .then(d => {
         setCostEnabled(d.costEnabled !== false);
@@ -148,7 +150,7 @@ export default function Sidebar() {
   }, []);
 
   const isActive = (href: string) => {
-    const path = pathname.replace('/awsops', '') || '/';
+    const path = pathname || '/';
     if (href === '/') return path === '/';
     return path.startsWith(href);
   };
@@ -163,8 +165,9 @@ export default function Sidebar() {
     return item.subItems?.some(sub => isActive(sub.href)) ?? false;
   };
 
+  // Cycle through languages: ko → en → zh → ko / 언어 순환 전환
   const toggleLang = () => {
-    setLang(lang === 'ko' ? 'en' : 'ko');
+    setLang(lang === 'ko' ? 'en' : lang === 'en' ? 'zh' : 'ko');
   };
 
   const renderNavItem = (item: NavItem) => {
@@ -193,7 +196,7 @@ export default function Sidebar() {
           {expanded && (
             <div className="space-y-0.5">
               {item.subItems.map(sub => {
-                const path = pathname.replace('/awsops', '') || '/';
+                const path = pathname || '/';
                 const subActive = sub.href === item.href
                   ? path === sub.href   // exact match for parent-path sub-item
                   : isActive(sub.href);
@@ -251,7 +254,7 @@ export default function Sidebar() {
         <div className={`px-5 py-3 border-b border-navy-600 flex items-center justify-center ${customerLogoBg === 'light' ? 'bg-white/95' : ''}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/awsops/logos/${customerLogo}`}
+            src={`/logos/${customerLogo}`}
             alt={customerName || 'Customer'}
             className="object-contain max-h-[40px] max-w-[180px]"
           />
@@ -261,7 +264,7 @@ export default function Sidebar() {
       {/* Logo + Language Toggle + Sign Out / 로고 + 언어 전환 + 로그아웃 */}
       <div className="px-5 py-4 border-b border-navy-600 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-accent-cyan tracking-tight">AWSops</h1>
+          <h1 className="text-2xl font-bold text-accent-cyan tracking-tight">MusinSight</h1>
           <p className="text-xs text-gray-500 mt-0.5">{t('sidebar.tagline')}</p>
         </div>
         <div className="flex items-center gap-1">
@@ -269,15 +272,24 @@ export default function Sidebar() {
           <button
             onClick={toggleLang}
             className="px-2 py-1 rounded-md text-accent-cyan border border-accent-cyan/30 bg-accent-cyan/10 hover:bg-accent-cyan/20 transition-colors"
-            title={lang === 'ko' ? 'Switch to English' : '한국어로 전환'}
+            title={lang === 'ko' ? 'Switch to English' : lang === 'en' ? '切换到中文' : '한국어로 전환'}
           >
-            <span className="text-[11px] font-bold font-mono">{lang === 'ko' ? 'EN' : '한'}</span>
+            <span className="text-[11px] font-bold font-mono">{lang === 'ko' ? 'EN' : lang === 'en' ? '中' : '한'}</span>
           </button>
           {/* Sign Out / 로그아웃 */}
           <button
             onClick={async () => {
-              await fetch('/awsops/api/auth', { method: 'POST' });
-              window.location.href = '/awsops';
+              // ALB 세션 쿠키 만료 후 Cognito 로그아웃으로 이동 (앱 쿠키만 지우면 ALB가 통과시킴)
+              // Expire ALB session cookies, then hand off to Cognito logout
+              let target = '/';
+              try {
+                const res = await fetch('/api/auth', { method: 'POST' });
+                const data = await res.json();
+                if (data?.logoutUrl) target = data.logoutUrl;
+              } catch {
+                // 네트워크 실패 시에도 최소한 루트로 이동 / fall back to root
+              }
+              window.location.href = target;
             }}
             className="p-2 rounded-lg text-gray-500 hover:text-accent-red hover:bg-navy-700 transition-colors"
             title={t('sidebar.signOut')}
@@ -324,7 +336,7 @@ export default function Sidebar() {
         <button
           onClick={() => {
             const next = !costEnabled;
-            fetch('/awsops/api/steampipe?action=config', {
+            fetch('/api/steampipe?action=config', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ costEnabled: next }),

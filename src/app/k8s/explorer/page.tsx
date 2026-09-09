@@ -199,7 +199,7 @@ export default function K8sExplorerPage() {
     setLoading(true);
     try {
       const currentConfig = tabConfig[activeTab];
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -354,7 +354,7 @@ export default function K8sExplorerPage() {
         ? ` WHERE name = '${name}' AND namespace = '${ns}'`
         : ` WHERE name = '${name}'`;
       try {
-        const res = await fetch('/awsops/api/steampipe', {
+        const res = await fetch('/api/steampipe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

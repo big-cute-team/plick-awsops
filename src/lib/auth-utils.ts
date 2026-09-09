@@ -11,8 +11,35 @@ export interface UserInfo {
 
 const ANONYMOUS: UserInfo = { email: 'anonymous', sub: 'anonymous' };
 
+// ALB authenticate-cognito는 검증된 사용자 클레임을 x-amzn-oidc-data 헤더로 전달
+// ALB authenticate-cognito passes verified user claims via x-amzn-oidc-data header
+function decodeJwtPayload(token: string): Record<string, string> | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    return JSON.parse(
+      Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8')
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function getUserFromRequest(request: NextRequest): UserInfo {
   try {
+    // 1순위: ALB 인증 헤더 (ALB에서 이미 서명 검증됨)
+    const oidcData = request.headers.get('x-amzn-oidc-data');
+    if (oidcData) {
+      const claims = decodeJwtPayload(oidcData);
+      if (claims) {
+        return {
+          email: claims.email || claims.username || claims.sub || 'unknown',
+          sub: claims.sub || 'unknown',
+        };
+      }
+    }
+
+    // 2순위: 레거시 awsops_token 쿠키 (구 Lambda@Edge 방식)
     const cookieHeader = request.headers.get('cookie') || '';
     const cookies: Record<string, string> = {};
     cookieHeader.split(';').forEach(c => {

@@ -65,6 +65,7 @@ for entry in "${GATEWAYS[@]}"; do
             --name "$GW_NAME" --role-arn "$ROLE_ARN" \
             --protocol-type MCP --authorizer-type NONE \
             --description "$GW_DESC" \
+            --tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
             --region "$REGION" --output json 2>&1)
         GW_ID=$(echo "$RESULT" | python3 -c "import json,sys;print(json.load(sys.stdin).get('gatewayId',''))" 2>/dev/null || echo "")
         echo "  CREATED: $GW_NAME ($GW_ID)"

@@ -409,6 +409,33 @@ host_account = os.environ['_SP_HOST_ACCOUNT']
 external_id = os.environ['_SP_EXTERNAL_ID']
 role_name = os.environ['_SP_ROLE_NAME']
 
+AWS_CONFIG = os.path.expanduser('~/.aws/config')
+
+def write_aws_profile(profile, role_arn, external_id, region):
+    # ~/.aws/config에 대상 계정 프로필을 멱등하게 기록
+    # Steampipe AWS 플러그인은 role_arn/external_id 인자를 지원하지 않으므로
+    # 자격증명은 AWS CLI 프로필로 위임한다. 소스는 EC2 인스턴스 역할.
+    block = [f'[profile {profile}]', f'role_arn = {role_arn}']
+    if external_id:
+        block.append(f'external_id = {external_id}')
+    block += ['credential_source = Ec2InstanceMetadata', f'region = {region}', '']
+    block_text = chr(10).join(block)
+
+    os.makedirs(os.path.dirname(AWS_CONFIG), exist_ok=True)
+    existing = open(AWS_CONFIG).read() if os.path.exists(AWS_CONFIG) else ''
+
+    # 같은 프로필이 있으면 그 블록만 교체 / replace only that block if present
+    out, skip = [], False
+    for line in existing.split(chr(10)):
+        if line.strip().startswith('['):
+            skip = line.strip() == f'[profile {profile}]'
+        if not skip:
+            out.append(line)
+    cleaned = chr(10).join(out).rstrip(chr(10))
+    with open(AWS_CONFIG, 'w') as f:
+        f.write((cleaned + chr(10)*2 if cleaned else '') + block_text)
+    print(f'  AWS profile: {profile}')
+
 for acc in accounts:
     acct_id = acc['accountId']
     conn_name = acc['connectionName']
@@ -435,13 +462,15 @@ for acc in accounts:
 }}
 '''
     else:
-        # Target account: AssumeRole
+        # Target account: AWS CLI 프로필 경유 AssumeRole
+        # (Steampipe AWS 플러그인은 role_arn/external_id 인자를 받지 않는다 —
+        #  ~/.aws/config 프로필에 정의하고 profile 인자로 참조한다)
         role_arn = f'arn:aws:iam::{acct_id}:role/{role_name}'
+        write_aws_profile(conn_name, role_arn, external_id, region)
         content = f'''connection \"{conn_name}\" {{
   plugin = \"aws\"
+  profile = \"{conn_name}\"
   regions = [\"{region}\"]
-  assume_role_arn  = \"{role_arn}\"
-  assume_role_external_id = \"{external_id}\"
 {ignore_codes}
 }}
 '''

@@ -80,7 +80,9 @@ aws iam create-role --role-name AWSopsAgentCoreRole \
             {"Effect": "Allow", "Principal": {"Service": "bedrock.amazonaws.com"}, "Action": "sts:AssumeRole"},
             {"Effect": "Allow", "Principal": {"Service": "bedrock-agentcore.amazonaws.com"}, "Action": "sts:AssumeRole"}
         ]
-    }' 2>/dev/null || true
+    }' \
+    --tags Key=Realm,Value=awsops Key=ServiceDomain,Value=aws Key=ServiceComponent,Value=awsops-poc Key=Environment,Value=sandbox \
+    2>/dev/null || true
 
 # Attach managed policy / 관리형 정책 연결
 run_or_fail "IAM attach-role-policy" \
@@ -107,7 +109,9 @@ sleep 10
 echo ""
 echo -e "${CYAN}[2/5] Creating ECR repository...${NC}"
 # Ignore if already exists / 이미 존재하면 무시
-aws ecr create-repository --repository-name awsops-agent --region "$REGION" 2>/dev/null || true
+aws ecr create-repository --repository-name awsops-agent \
+    --tags Key=Realm,Value=awsops Key=ServiceDomain,Value=aws Key=ServiceComponent,Value=awsops-poc Key=Environment,Value=sandbox \
+    --region "$REGION" 2>/dev/null || true
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/awsops-agent"
 echo "  ECR: $ECR_URI"
 
@@ -146,6 +150,7 @@ RT_RESULT=$(aws bedrock-agentcore-control create-agent-runtime \
     --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/AWSopsAgentCoreRole" \
     --agent-runtime-artifact "{\"containerConfiguration\":{\"containerUri\":\"${ECR_URI}:latest\"}}" \
     --network-configuration '{"networkMode":"PUBLIC"}' \
+    --tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
     --region "$REGION" --output json 2>&1) || {
     echo -e "  ${RED}ERROR: Failed to create AgentCore Runtime / AgentCore 런타임 생성 실패${NC}"
     echo "$RT_RESULT" | head -10
@@ -171,6 +176,7 @@ echo -e "${CYAN}[5/5] Creating Runtime Endpoint...${NC}"
 
 EP_RESULT=$(aws bedrock-agentcore-control create-agent-runtime-endpoint \
     --agent-runtime-id "$RT_ID" --name awsops_endpoint \
+    --tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
     --region "$REGION" --output json 2>&1) || {
     echo -e "  ${RED}ERROR: Failed to create Runtime Endpoint / 런타임 엔드포인트 생성 실패${NC}"
     echo "$EP_RESULT" | head -10

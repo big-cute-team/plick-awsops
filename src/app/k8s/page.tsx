@@ -99,20 +99,20 @@ export default function K8sOverviewPage() {
     setRegisteringCluster(clusterName);
     setRegisterResult(null);
     try {
-      const res = await fetch('/awsops/api/k8s', {
+      const res = await fetch('/api/k8s', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clusterName, region }),
       });
       const result = await res.json();
       if (result.success) {
-        setRegisterResult({ cluster: clusterName, ok: true, msg: lang === 'ko' ? '등록 완료, 연결 확인 중...' : 'Registered, verifying connection...' });
+        setRegisterResult({ cluster: clusterName, ok: true, msg: lang === 'ko' ? '등록 완료, 연결 확인 중...' : lang === 'zh' ? '注册完成，正在验证连接...' : 'Registered, verifying connection...' });
         // Poll up to 5 times (3s interval) waiting for Steampipe to load the new connection
         // Steampipe auto-detects .spc file changes but needs a few seconds
         for (let i = 0; i < 5; i++) {
           await new Promise(r => setTimeout(r, 3000));
           try {
-            const probe = await fetch('/awsops/api/steampipe?bustCache=true', {
+            const probe = await fetch('/api/steampipe?bustCache=true', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ accountId: currentAccountId, queries: { probe: k8sQ.nodeList } }),
@@ -121,7 +121,7 @@ export default function K8sOverviewPage() {
             const nodeRows = probeResult.probe?.rows || [];
             const found = nodeRows.some((n: any) => n.context_name && String(n.context_name).includes(clusterName));
             if (found) {
-              setRegisterResult({ cluster: clusterName, ok: true, msg: lang === 'ko' ? 'K8s 연결 완료!' : 'K8s Connected!' });
+              setRegisterResult({ cluster: clusterName, ok: true, msg: lang === 'ko' ? 'K8s 연결 완료!' : lang === 'zh' ? 'K8s 连接成功！' : 'K8s Connected!' });
               fetchDataRef.current?.(true);
               return;
             }
@@ -147,7 +147,7 @@ export default function K8sOverviewPage() {
     try {
       const ipPrefix = nodeName.split('.')[0];
       const eniSql = `SELECT network_interface_id, status, interface_type, private_ip_address::text AS primary_ip, attachment_status, private_ip_addresses::text AS all_ips FROM aws_ec2_network_interface WHERE attached_instance_id IN (SELECT instance_id FROM aws_ec2_instance WHERE private_dns_name LIKE '${ipPrefix}%')`;
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { enis: eniSql } }),
@@ -161,7 +161,7 @@ export default function K8sOverviewPage() {
         const eniIds = eniRows.map((e: any) => `'${e.network_interface_id}'`).join(',');
         const trafficSql = `SELECT dimension_value AS eni_id, metric_name, average, timestamp FROM aws_cloudwatch_metric_statistic_data_point WHERE namespace = 'AWS/EC2' AND metric_name IN ('NetworkIn', 'NetworkOut', 'NetworkPacketsIn', 'NetworkPacketsOut') AND dimension_name = 'NetworkInterfaceId' AND dimension_value IN (${eniIds}) AND period = 300 AND timestamp >= NOW() - INTERVAL '1 hour' ORDER BY dimension_value, metric_name, timestamp DESC`;
         try {
-          const tRes = await fetch('/awsops/api/steampipe', {
+          const tRes = await fetch('/api/steampipe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ accountId: currentAccountId, queries: { traffic: trafficSql } }),
@@ -209,7 +209,7 @@ export default function K8sOverviewPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -637,10 +637,10 @@ export default function K8sOverviewPage() {
                   </a>
                 </div>
                 <div className="p-2.5 rounded bg-navy-900 text-xs font-mono text-gray-400 space-y-1 overflow-x-auto">
-                  <div className="text-gray-500"># 1. {lang === 'ko' ? '클러스터 인증 모드 확인' : 'Check cluster auth mode'}</div>
+                  <div className="text-gray-500"># 1. {lang === 'ko' ? '클러스터 인증 모드 확인' : lang === 'zh' ? '检查集群认证模式' : 'Check cluster auth mode'}</div>
                   <div>aws eks describe-cluster --name <span className="text-accent-cyan">CLUSTER_NAME</span> \</div>
                   <div className="ml-4">--query &apos;cluster.accessConfig.authenticationMode&apos;</div>
-                  <div className="text-gray-500 mt-2"># 2. Access Entry {lang === 'ko' ? '등록 (클러스터 소유자 실행)' : 'registration (run as cluster owner)'}</div>
+                  <div className="text-gray-500 mt-2"># 2. Access Entry {lang === 'ko' ? '등록 (클러스터 소유자 실행)' : lang === 'zh' ? '注册（由集群所有者执行）' : 'registration (run as cluster owner)'}</div>
                   <div>aws eks create-access-entry --cluster-name <span className="text-accent-cyan">CLUSTER_NAME</span> \</div>
                   <div className="ml-4">--principal-arn <span className="text-accent-cyan">ROLE_ARN</span> --type STANDARD</div>
                 </div>
@@ -768,9 +768,9 @@ export default function K8sOverviewPage() {
                           className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/30 hover:bg-accent-cyan/20 transition-colors disabled:opacity-50"
                         >
                           {registeringCluster === c.cluster_name ? (
-                            <><Loader2 size={12} className="animate-spin" /> {lang === 'ko' ? '등록 중...' : 'Registering...'}</>
+                            <><Loader2 size={12} className="animate-spin" /> {lang === 'ko' ? '등록 중...' : lang === 'zh' ? '注册中...' : 'Registering...'}</>
                           ) : (
-                            <><Plus size={12} /> {lang === 'ko' ? 'kubeconfig 등록' : 'Register kubeconfig'}</>
+                            <><Plus size={12} /> {lang === 'ko' ? 'kubeconfig 등록' : lang === 'zh' ? '注册 kubeconfig' : 'Register kubeconfig'}</>
                           )}
                         </button>
                         <a href={`${process.env.NEXT_PUBLIC_DOCS_URL}/compute/eks-auth`} target="_blank" rel="noopener noreferrer"
@@ -785,7 +785,7 @@ export default function K8sOverviewPage() {
                       )}
                       <details className="group">
                         <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-400">
-                          {lang === 'ko' ? '권한 없으면 클러스터 소유자가 실행:' : 'If no access, run as cluster owner:'}
+                          {lang === 'ko' ? '권한 없으면 클러스터 소유자가 실행:' : lang === 'zh' ? '如无权限，请由集群所有者执行：' : 'If no access, run as cluster owner:'}
                         </summary>
                         <div className="mt-1 p-1.5 rounded bg-navy-900 text-[10px] font-mono text-gray-400 overflow-x-auto">
                           <div>aws eks create-access-entry \</div>

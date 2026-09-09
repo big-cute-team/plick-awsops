@@ -42,7 +42,7 @@ export default function CostPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -67,7 +67,7 @@ export default function CostPage() {
   const loadSnapshot = useCallback(async () => {
     try {
       const acctQ = currentAccountId && currentAccountId !== '__all__' ? `&accountId=${currentAccountId}` : '';
-      const res = await fetch(`/awsops/api/steampipe?action=cost-snapshot${acctQ}`);
+      const res = await fetch(`/api/steampipe?action=cost-snapshot${acctQ}`);
       if (!res.ok) return;
       const snap = await res.json();
       setData({
@@ -83,7 +83,7 @@ export default function CostPage() {
 
   // Cost Explorer 가용성 먼저 확인 후 데이터 로딩
   useEffect(() => {
-    fetch(`/awsops/api/steampipe?action=cost-check${costAcctQ}`)
+    fetch(`/api/steampipe?action=cost-check${costAcctQ}`)
       .then(r => r.json())
       .then(d => {
         setCostAvailable(d.available !== false);
@@ -106,7 +106,7 @@ export default function CostPage() {
     setDetailLoading(true);
     try {
       const sql = costQ.serviceDetail.replace('{service}', service);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: sql } }),
@@ -244,7 +244,7 @@ export default function CostPage() {
             <button
               onClick={() => {
                 setCostAvailable(null);
-                fetch(`/awsops/api/steampipe?action=cost-check&bustCache=true${costAcctQ}`)
+                fetch(`/api/steampipe?action=cost-check&bustCache=true${costAcctQ}`)
                   .then(r => r.json())
                   .then(d => {
                     setCostAvailable(d.available !== false);
@@ -257,7 +257,7 @@ export default function CostPage() {
             >
               Re-check Availability
             </button>
-            <a href="/awsops/inventory"
+            <a href="/inventory"
               className="px-4 py-2 rounded-lg bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/40 hover:bg-accent-cyan/30 transition-colors text-sm"
             >
               View Resource Inventory
@@ -279,7 +279,7 @@ export default function CostPage() {
             onClick={() => {
               setCostAvailable(null);
               setUsingSnapshot(false);
-              fetch(`/awsops/api/steampipe?action=cost-check&bustCache=true${costAcctQ}`)
+              fetch(`/api/steampipe?action=cost-check&bustCache=true${costAcctQ}`)
                 .then(r => r.json())
                 .then(d => {
                   setCostAvailable(d.available !== false);

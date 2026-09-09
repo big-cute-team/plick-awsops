@@ -59,6 +59,7 @@ else
       --name "$MEMORY_NAME" \
       --description "AWSops AI Assistant conversation history" \
       --event-expiry-duration 365 \
+      --tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
       --region "$REGION" \
       --output json 2>&1)
 

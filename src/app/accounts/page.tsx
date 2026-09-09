@@ -58,7 +58,7 @@ export default function AccountsPage() {
     setLoading(true);
     setPageError(null);
     try {
-      const res = await fetch('/awsops/api/steampipe?action=accounts');
+      const res = await fetch('/api/steampipe?action=accounts');
       const data = await res.json();
       setAccounts(data.accounts || []);
     } catch {
@@ -70,7 +70,7 @@ export default function AccountsPage() {
 
   // Admin access check / 관리자 접근 확인
   useEffect(() => {
-    fetch('/awsops/api/steampipe?action=admin-check')
+    fetch('/api/steampipe?action=admin-check')
       .then(r => r.json())
       .then(d => {
         if (!d.isAdmin) setAccessDenied(true);
@@ -107,7 +107,7 @@ export default function AccountsPage() {
     if (source === 'table') setTableTestResult(null);
     else setFormTestResult(null);
     try {
-      const res = await fetch('/awsops/api/steampipe?action=test-account', {
+      const res = await fetch('/api/steampipe?action=test-account', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId, roleName: newRoleName }),
@@ -133,7 +133,7 @@ export default function AccountsPage() {
     setAdding(true);
     setPageError(null);
     try {
-      const res = await fetch('/awsops/api/steampipe?action=add-account', {
+      const res = await fetch('/api/steampipe?action=add-account', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -164,7 +164,7 @@ export default function AccountsPage() {
     setConfirmingRemove(null);
     setPageError(null);
     try {
-      const res = await fetch('/awsops/api/steampipe?action=remove-account', {
+      const res = await fetch('/api/steampipe?action=remove-account', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId }),
@@ -185,7 +185,7 @@ export default function AccountsPage() {
     setInitingHost(true);
     setPageError(null);
     try {
-      const res = await fetch('/awsops/api/steampipe?action=init-host', {
+      const res = await fetch('/api/steampipe?action=init-host', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ alias: hostAlias }),
@@ -241,7 +241,7 @@ export default function AccountsPage() {
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-amber-400 mb-1">Host Account Setup Required</h3>
                 <p className="text-sm text-gray-400 mb-4">
-                  Register the host account (where AWSops is running) to enable multi-account monitoring.
+                  Register the host account (where MusinSight is running) to enable multi-account monitoring.
                   The host account will be auto-detected from the EC2 instance credentials.
                 </p>
                 <div className="flex items-center gap-3">

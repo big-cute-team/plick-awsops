@@ -24,7 +24,7 @@ export interface AccountConfig {
   alias: string;           // Human-readable name ("Production", "Staging")
   connectionName: string;  // Steampipe connection name ("aws_123456789012")
   region: string;          // Primary region
-  isHost: boolean;         // Is this the host account (where AWSops runs)
+  isHost: boolean;         // Is this the host account (where MusinSight runs)
   features: AccountFeatures;
   profile?: string;        // AWS CLI profile for cross-account access
 }
@@ -80,6 +80,9 @@ export interface AppConfig {
   snsTopicArn?: string;               // SNS topic ARN for email notifications / 이메일 알림용 SNS 토픽 ARN
   notificationEmails?: string[];      // Mailing list for report/benchmark notifications / 리포트/벤치마크 알림 메일링 리스트
   notificationEnabled?: boolean;      // Enable auto-notification on report completion / 리포트 완료 시 자동 알림 활성화
+  cognitoDomain?: string;             // Cognito hosted UI domain (e.g. "ops-dashboard-123.auth.ap-northeast-2.amazoncognito.com")
+  cognitoClientId?: string;           // Cognito app client ID — used to build the logout URL
+  appUrl?: string;                    // Public app URL, logout redirect target (e.g. "https://musinsight.dev1.musinsa.io/")
 }
 
 const DEFAULT_CONFIG: AppConfig = {

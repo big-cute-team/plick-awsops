@@ -38,7 +38,7 @@ export default function EBSPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -74,7 +74,7 @@ export default function EBSPage() {
     try {
       const detailSql = ebsQ.detail.replace(/{volume_id}/g, volumeId);
       const snapSql = ebsQ.volumeSnapshots.replace(/{volume_id}/g, volumeId);
-      const res = await fetch('/awsops/api/steampipe', {
+      const res = await fetch('/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: currentAccountId, queries: { detail: detailSql, snapshots: snapSql } }),
@@ -91,7 +91,7 @@ export default function EBSPage() {
         if (instanceIds.length > 0) {
           const instQueries: Record<string, string> = {};
           instanceIds.forEach(id => { instQueries[id] = ebsQ.attachedInstance.replace('{instance_id}', id); });
-          const instRes = await fetch('/awsops/api/steampipe', {
+          const instRes = await fetch('/api/steampipe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ accountId: currentAccountId, queries: instQueries }),

@@ -96,7 +96,7 @@ const eksOptimizeCollector: Collector = {
       runQuery(eksQ.nodeCapacity, accountId ? { accountId } : undefined),
     ]);
 
-    const costPromise = fetch(`http://localhost:${process.env.PORT || 3000}/awsops/api/eks-container-cost${accountId ? `?accountId=${accountId}` : ''}`, {
+    const costPromise = fetch(`http://localhost:${process.env.PORT || 3000}/api/eks-container-cost${accountId ? `?accountId=${accountId}` : ''}`, {
       signal: AbortSignal.timeout(15000),
     }).then(r => r.json()).catch(() => null);
 

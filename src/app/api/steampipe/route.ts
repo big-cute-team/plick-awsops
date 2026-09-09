@@ -245,9 +245,16 @@ export async function PUT(request: NextRequest) {
           try { execSync('aws ce get-cost-and-usage --time-period Start=$(date -d "7 days ago" +%Y-%m-%d),End=$(date +%Y-%m-%d) --granularity DAILY --metrics BlendedCost --output json', { timeout: 8000, encoding: 'utf-8' }); hostCostEnabled = true; } catch {}
           try { execSync('aws eks list-clusters --output json', { timeout: 5000, encoding: 'utf-8' }); hostEksEnabled = true; } catch {}
 
+          // 표시명: IAM 계정 별칭 → 없으면 계정 ID / Display name: IAM account alias, fallback to account ID
+          let hostAlias = hostAccountId;
+          try {
+            const aliasOut = execSync('aws iam list-account-aliases --query "AccountAliases[0]" --output text', { timeout: 5000, encoding: 'utf-8' }).trim();
+            if (aliasOut && aliasOut !== 'None') hostAlias = aliasOut;
+          } catch {}
+
           const hostAccount: AccountConfig = {
             accountId: hostAccountId,
-            alias: 'Host',
+            alias: hostAlias,
             connectionName: `aws_${hostAccountId}`,
             region: accountRegion,
             isHost: true,

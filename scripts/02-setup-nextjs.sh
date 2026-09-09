@@ -39,6 +39,36 @@ echo -e "${CYAN}[1/3] Installing npm dependencies...${NC}"
 npm install 2>&1 | tail -3
 echo "  Node.js: $(node --version), npm: $(npm --version)"
 
+# -- [1.5/3] System packages for AI diagnosis PDF rendering -------------------
+#   PDF generation in src/lib/report-pdf.ts uses puppeteer-core + Playwright's
+#   Chromium binary. Both require system libraries and CJK fonts that are NOT
+#   present on a stock Amazon Linux 2023 AMI:
+#     - mesa-libgbm / alsa-lib / atk / at-spi2-atk / libXfixes / libXrandr /
+#       libXcomposite / libXdamage / cups-libs / pango / cairo  → Chromium runtime
+#     - google-noto-sans-cjk-kr-fonts                            → Korean text
+#     - google-noto-emoji-color-fonts                            → section icons
+#   Without these, PDF either fails to launch or renders Korean / emoji as
+#   blank glyphs (the bug fixed in v1.9.3).
+echo ""
+echo -e "${CYAN}[1.5/3] Installing PDF rendering deps (fonts + Chromium libs)...${NC}"
+sudo dnf install -y --quiet \
+    google-noto-sans-cjk-kr-fonts \
+    google-noto-emoji-color-fonts \
+    mesa-libgbm alsa-lib nspr nss libdrm libX11 libxkbcommon \
+    atk at-spi2-atk libXfixes libXrandr libXcomposite libXdamage \
+    cups-libs pango cairo 2>&1 | tail -3
+sudo fc-cache -f 2>&1 | tail -1 || true
+
+#   Install Chromium binary for Playwright if it's not already cached.
+#   The browser lives under ~/.cache/ms-playwright/ and persists across rebuilds.
+if [ ! -d "$HOME/.cache/ms-playwright" ] || ! ls "$HOME/.cache/ms-playwright" 2>/dev/null | grep -q "^chromium-"; then
+    echo "  Installing Playwright Chromium (one-time)..."
+    npx --yes playwright install chromium 2>&1 | tail -3
+else
+    echo "  Playwright Chromium: already installed ($(ls "$HOME/.cache/ms-playwright" | grep '^chromium-' | head -1))"
+fi
+echo -e "  ${GREEN}PDF deps ready${NC}"
+
 # -- [2/3] Start Steampipe as PostgreSQL service --------------------------------
 #   NOTE: PostgreSQL 별도 설치 불필요
 #   Steampipe에 PostgreSQL이 내장되어 있음 (~/.steampipe/db/)
@@ -169,7 +199,13 @@ AGGR
     sleep 2
 fi
 
-export CONFIG_FILE ACCOUNT_ID REGION COST_ENABLED EKS_ENABLED
+# 계정 표시명: IAM 계정 별칭 → 없으면 계정 ID / Display name: IAM account alias, fallback to account ID
+ACCOUNT_ALIAS=$(aws iam list-account-aliases --query "AccountAliases[0]" --output text 2>/dev/null || echo "")
+if [ -z "$ACCOUNT_ALIAS" ] || [ "$ACCOUNT_ALIAS" = "None" ]; then
+    ACCOUNT_ALIAS="$ACCOUNT_ID"
+fi
+
+export CONFIG_FILE ACCOUNT_ID ACCOUNT_ALIAS REGION COST_ENABLED EKS_ENABLED
 python3 << 'PYEOF'
 import json, os
 cfg_path = os.environ.get('CONFIG_FILE', 'data/config.json')
@@ -183,7 +219,7 @@ accounts = cfg.get('accounts', [])
 if not any(a.get('isHost') for a in accounts):
     host = {
         'accountId': account_id,
-        'alias': 'Host',
+        'alias': os.environ.get('ACCOUNT_ALIAS') or account_id,
         'connectionName': f'aws_{account_id}',
         'region': region,
         'isHost': True,

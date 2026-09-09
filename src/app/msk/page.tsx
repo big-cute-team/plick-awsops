@@ -32,7 +32,7 @@ export default function MSKPage() {
   const fetchData = useCallback(async (bustCache = false) => {
     setLoading(true);
     try {
-      const res = await fetch(bustCache ? '/awsops/api/steampipe?bustCache=true' : '/awsops/api/steampipe', {
+      const res = await fetch(bustCache ? '/api/steampipe?bustCache=true' : '/api/steampipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -54,7 +54,7 @@ export default function MSKPage() {
         const nodePromises = clusterList.map(async (c: any) => {
           if (!c.cluster_arn) return { clusterName: c.cluster_name, nodes: [] };
           try {
-            const nRes = await fetch(`/awsops/api/msk?clusterArn=${encodeURIComponent(c.cluster_arn)}&accountId=${currentAccountId}`);
+            const nRes = await fetch(`/api/msk?clusterArn=${encodeURIComponent(c.cluster_arn)}&accountId=${currentAccountId}`);
             const nData = await nRes.json();
             return { clusterName: c.cluster_name as string, nodes: nData.nodes || [] };
           } catch { return { clusterName: c.cluster_name as string, nodes: [] }; }
@@ -71,7 +71,7 @@ export default function MSKPage() {
             .map((n: any) => Math.round(n.BrokerNodeInfo.BrokerId));
           if (brokerIds.length === 0) return;
           try {
-            const mRes = await fetch(`/awsops/api/msk?action=metrics&clusterName=${encodeURIComponent(cluster.clusterName)}&brokerIds=${brokerIds.join(',')}&accountId=${currentAccountId}`);
+            const mRes = await fetch(`/api/msk?action=metrics&clusterName=${encodeURIComponent(cluster.clusterName)}&brokerIds=${brokerIds.join(',')}&accountId=${currentAccountId}`);
             const mData = await mRes.json();
             metricsMap[cluster.clusterName] = mData.metrics || {};
           } catch {}
@@ -90,13 +90,13 @@ export default function MSKPage() {
     try {
       const sql = mskQ.detail.replace(/{cluster_name}/g, clusterName);
       const [steampipeRes, nodesRes] = await Promise.all([
-        fetch('/awsops/api/steampipe', {
+        fetch('/api/steampipe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ accountId: currentAccountId, queries: { detail: sql } }),
         }),
         clusterArn
-          ? fetch(`/awsops/api/msk?clusterArn=${encodeURIComponent(clusterArn)}&accountId=${currentAccountId}`)
+          ? fetch(`/api/msk?clusterArn=${encodeURIComponent(clusterArn)}&accountId=${currentAccountId}`)
           : Promise.resolve(null),
       ]);
       const result = await steampipeRes.json();

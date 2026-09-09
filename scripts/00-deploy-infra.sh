@@ -58,7 +58,7 @@ echo -e "  │  ${GREEN}필수 / Required:${NC}                                 
 echo -e "  │    - CloudFormation (스택 생성/관리 / stack CRUD)             │"
 echo -e "  │    - EC2 (VPC, 서브넷, SG, 인스턴스 / instance, VPC, SG)     │"
 echo -e "  │    - ELB (ALB, 타겟 그룹 / ALB, target groups)              │"
-echo -e "  │    - CloudFront (배포 생성 / distribution)                   │"
+echo -e "  │    - ACM + Route 53 (인증서, DNS / certificate, DNS)         │"
 echo -e "  │    - IAM (역할 생성 / role creation)                         │"
 echo -e "  │    - SSM (세션 매니저 / Session Manager)                     │"
 echo -e "  │    - S3 (CDK 에셋 버킷 / CDK asset bucket)                  │"
@@ -68,7 +68,6 @@ echo -e "  │  ${YELLOW}선택 (추후 설치 시) / Optional (for later steps)
 echo -e "  │    - Cognito (인증 / authentication)                        │"
 echo -e "  │    - Bedrock AgentCore (AI 에이전트 / AI agent)              │"
 echo -e "  │    - ECR (Docker 이미지 / Docker images)                    │"
-echo -e "  │    - Lambda@Edge (us-east-1, CloudFront 인증)               │"
 echo -e "  │                                                             │"
 echo -e "  │  ${DIM}권장: AdministratorAccess 또는 PowerUserAccess${NC}           │"
 echo -e "  │  ${DIM}Recommended: AdministratorAccess or PowerUserAccess${NC}     │"
@@ -558,21 +557,9 @@ npm install --quiet
 npx tsc
 echo "  빌드 완료 / Build complete."
 
-bootstrap_region() {
-    local BR="$1"
-    local STATUS
-    STATUS=$(aws cloudformation describe-stacks --stack-name CDKToolkit --region "$BR" \
-        --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NONE")
-    if [ "$STATUS" != "NONE" ] && [ "$STATUS" != "DELETE_COMPLETE" ]; then
-        echo "  $BR: 이미 부트스트랩됨 / bootstrapped"
-    else
-        echo "  $BR: 부트스트랩 중... / bootstrapping..."
-        npx cdk bootstrap "aws://$ACCOUNT_ID/$BR" --region "$BR"
-    fi
-}
-
-bootstrap_region "$REGION"
-[ "$REGION" != "us-east-1" ] && bootstrap_region "us-east-1"
+# 부트스트랩은 [10/10]에서 실행 (앱 synth에 customDomain 컨텍스트가 필요해서 설정 수집 이후로 이동)
+# Bootstrap moved to [10/10] — app synth needs customDomain context collected in [9/10]
+echo "  부트스트랩은 배포 직전에 실행됩니다 / Bootstrap runs right before deploy."
 
 ###############################################################################
 #  [9/10] 설정 확인 / Confirm Configuration                                     #
@@ -582,15 +569,6 @@ echo -e "${CYAN}[9/10] 설정 확인 / Confirm Configuration...${NC}"
 
 # 인스턴스 타입 / Instance type
 # INSTANCE_TYPE은 [6/10]에서 대화형으로 선택 / selected interactively in step 6
-
-# CloudFront Prefix List
-CF_PREFIX_LIST=$(aws ec2 describe-managed-prefix-lists \
-    --filters "Name=prefix-list-name,Values=com.amazonaws.global.cloudfront.origin-facing" \
-    --query "PrefixLists[0].PrefixListId" --output text --region "$REGION" 2>/dev/null || echo "")
-if [ -z "$CF_PREFIX_LIST" ] || [ "$CF_PREFIX_LIST" = "None" ]; then
-    echo -e "${RED}오류: CloudFront prefix list 없음 / Not found${NC}"
-    exit 1
-fi
 
 # VSCode 비밀번호 / Password
 VSCODE_PASSWORD="${VSCODE_PASSWORD:-}"
@@ -604,14 +582,15 @@ if [ ${#VSCODE_PASSWORD} -lt 8 ]; then
     exit 1
 fi
 
-# 커스텀 도메인 (선택) / Custom domain (optional)
+# 커스텀 도메인 (필수 — ALB HTTPS + Cognito 인증에 필요)
+# Custom domain (required — for ALB HTTPS + Cognito auth)
 CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-}"
 if [ -z "$CUSTOM_DOMAIN" ]; then
     echo ""
-    echo -e "  ${CYAN}커스텀 도메인 설정 (선택) / Custom domain (optional)${NC}"
+    echo -e "  ${CYAN}커스텀 도메인 설정 (필수) / Custom domain (required)${NC}"
     echo -e "  Route 53 호스팅 존이 있어야 합니다 / Requires Route 53 hosted zone"
-    echo -e "  예시 / Example: awsops.example.com"
-    read -p "  도메인 (비워두면 CloudFront 기본 도메인 사용): " CUSTOM_DOMAIN
+    read -p "  도메인 [musinsight.dev1.musinsa.io]: " CUSTOM_DOMAIN
+    CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-musinsight.dev1.musinsa.io}"
 fi
 
 echo ""
@@ -621,7 +600,6 @@ echo -e "  ${BOLD}├───────────────────�
 echo "  │  계정 / Account:    $ACCOUNT_ID"
 echo "  │  리전 / Region:     $REGION"
 echo "  │  인스턴스 / Type:   $INSTANCE_TYPE"
-echo "  │  CF Prefix List:    $CF_PREFIX_LIST"
 if [ -n "$EXISTING_VPC_ID" ]; then
     echo "  │  VPC:               $EXISTING_VPC_ID (기존 / existing)"
     echo "  │  VPC CIDR:          $VPC_CIDR"
@@ -629,9 +607,7 @@ else
     echo "  │  VPC:               새로 생성 / new ($NEW_VPC_CIDR)"
 fi
 echo "  │  비밀번호 / PW:     $(printf '*%.0s' $(seq 1 ${#VSCODE_PASSWORD}))"
-if [ -n "$CUSTOM_DOMAIN" ]; then
-    echo "  │  도메인 / Domain:   $CUSTOM_DOMAIN"
-fi
+echo "  │  도메인 / Domain:   $CUSTOM_DOMAIN"
 if [ -n "$TRANSIT_GATEWAY_ID" ]; then
     echo "  │  TGW:               $TRANSIT_GATEWAY_ID"
     [ -n "$TGW_ROUTE_CIDRS" ] && echo "  │  TGW Routes:         $TGW_ROUTE_CIDRS"
@@ -673,10 +649,19 @@ if [ -n "$TRANSIT_GATEWAY_ID" ]; then
     fi
 fi
 
+# CDK 부트스트랩 (synth에 customDomain 컨텍스트 전달) / Bootstrap with app context
+BOOTSTRAP_STATUS=$(aws cloudformation describe-stacks --stack-name CDKToolkit --region "$REGION" \
+    --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "NONE")
+if [ "$BOOTSTRAP_STATUS" != "NONE" ] && [ "$BOOTSTRAP_STATUS" != "DELETE_COMPLETE" ]; then
+    echo "  $REGION: 이미 부트스트랩됨 / bootstrapped"
+else
+    echo "  $REGION: 부트스트랩 중... / bootstrapping..."
+    npx cdk bootstrap "aws://$ACCOUNT_ID/$REGION" --region "$REGION" $CDK_CONTEXT
+fi
+
 npx cdk deploy AwsopsStack \
     --parameters InstanceType="$INSTANCE_TYPE" \
     --parameters VSCodePassword="$VSCODE_PASSWORD" \
-    --parameters CloudFrontPrefixListId="$CF_PREFIX_LIST" \
     --parameters ExistingVpcId="${EXISTING_VPC_ID}" \
     $CDK_CONTEXT \
     --require-approval never \
@@ -697,7 +682,8 @@ parse_output() {
     echo "$OUTPUTS" | python3 -c "import json,sys;o={i['OutputKey']:i['OutputValue'] for i in json.load(sys.stdin)};print(o.get('$1','N/A'))" 2>/dev/null || echo "N/A"
 }
 
-CF_URL=$(parse_output "CloudFrontURL")
+DASHBOARD_URL=$(parse_output "DashboardURL")
+VSCODE_URL=$(parse_output "VSCodeURL")
 INSTANCE_ID=$(parse_output "InstanceId")
 VPC_ID=$(parse_output "VPCId")
 ALB_DNS=$(parse_output "PublicALBEndpoint")
@@ -713,14 +699,14 @@ echo "  계정 / Account:     $ACCOUNT_ID"
 echo "  인스턴스 / Instance: $INSTANCE_ID ($INSTANCE_TYPE)"
 echo "  VPC:                $VPC_ID"
 echo "  ALB:                $ALB_DNS"
-echo "  CloudFront:         $CF_URL"
+echo "  대시보드 / Dashboard: $DASHBOARD_URL"
 echo ""
 echo -e "  ${BOLD}┌─────────────────────────────────────────────────┐${NC}"
 echo -e "  ${BOLD}│  접속 방법 / How to Access                       │${NC}"
 echo -e "  ${BOLD}├─────────────────────────────────────────────────┤${NC}"
 echo -e "  │                                                 │"
 echo -e "  │  ${GREEN}방법 1: VSCode Server (브라우저)${NC}               │"
-echo -e "  │  URL: ${BOLD}${CF_URL}${NC}"
+echo -e "  │  URL: ${BOLD}${VSCODE_URL}${NC}"
 echo -e "  │  비밀번호 / Password: (설정한 비밀번호)          │"
 echo -e "  │                                                 │"
 echo -e "  │  ${GREEN}방법 2: SSM Session Manager (터미널)${NC}          │"

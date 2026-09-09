@@ -50,7 +50,7 @@ echo "      Step 6e: 설정 적용 + 리빌드       (06e-setup-agentcore-config
 echo "      Step 6f: Memory Store            (06f-setup-agentcore-memory.sh)"
 echo "      Docker: 재빌드 + Runtime 업데이트  (6e 후 수동 실행)"
 echo "    Step 7:  OpenCost (EKS 비용)       (07-setup-opencost.sh)"
-echo "    Step 8:  CloudFront Lambda@Edge    (08-setup-cloudfront-auth.sh)"
+echo "    Step 8:  (deprecated — ALB Cognito 인증으로 대체 / replaced by ALB auth in Step 5)"
 echo "    Step 12: Multi-Account 설정        (12-setup-multi-account.sh)"
 echo ""
 echo "  운영 스크립트 / Operations:"
@@ -119,28 +119,13 @@ echo "    - Next.js   (production server, port 3000)"
 echo "    - Powerpipe (CIS benchmark CLI)"
 echo ""
 
-# Auto-detect CloudFront URL from CDK stack / CDK 스택에서 CloudFront URL 자동 감지
-CF_DOMAIN=""
-CF_STACK=$(aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE \
-    --query "StackSummaries[?contains(StackName, 'AwsopsStack') || contains(StackName, 'awsops')].StackName | [0]" \
-    --output text --region "$REGION" 2>/dev/null || echo "None")
-if [ -n "$CF_STACK" ] && [ "$CF_STACK" != "None" ]; then
-    CF_DIST_ID=$(aws cloudformation list-stack-resources --stack-name "$CF_STACK" \
-        --query "StackResourceSummaries[?ResourceType=='AWS::CloudFront::Distribution'].PhysicalResourceId | [0]" \
-        --output text --region "$REGION" 2>/dev/null || echo "None")
-    if [ -n "$CF_DIST_ID" ] && [ "$CF_DIST_ID" != "None" ]; then
-        CF_DOMAIN=$(aws cloudfront get-distribution --id "$CF_DIST_ID" \
-            --query "Distribution.DomainName" --output text --region us-east-1 2>/dev/null || echo "")
-    fi
-fi
-# Fallback: ALB origin / 폴백: ALB origin
-if [ -z "$CF_DOMAIN" ] || [ "$CF_DOMAIN" = "None" ]; then
-    CF_DOMAIN=$(aws cloudfront list-distributions \
-        --query "DistributionList.Items[?contains(Origins.Items[].DomainName, 'elb.amazonaws.com')].DomainName | [0]" \
-        --output text --region us-east-1 2>/dev/null || echo "")
-fi
-if [ -n "$CF_DOMAIN" ] && [ "$CF_DOMAIN" != "None" ]; then
-    echo -e "  CloudFront: ${GREEN}https://${CF_DOMAIN}/awsops${NC}"
+# Auto-detect Dashboard URL from CDK stack output (ALB + custom domain)
+DASHBOARD_URL=$(aws cloudformation describe-stacks \
+    --stack-name AwsopsStack --region "$REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='DashboardURL'].OutputValue | [0]" \
+    --output text 2>/dev/null || echo "")
+if [ -n "$DASHBOARD_URL" ] && [ "$DASHBOARD_URL" != "None" ]; then
+    echo -e "  Dashboard: ${GREEN}${DASHBOARD_URL}${NC}"
     echo ""
 fi
 
@@ -149,6 +134,5 @@ echo "    bash scripts/04-setup-eks-access.sh              # EKS 접근 설정"
 echo "    bash scripts/05-setup-cognito.sh                 # Cognito 인증"
 echo "    bash scripts/06-setup-agentcore.sh               # AgentCore AI (6a→6b→6c→6d→6e→6f)"
 echo "    bash scripts/07-setup-opencost.sh                # Prometheus + OpenCost (EKS 비용)"
-echo "    bash scripts/08-setup-cloudfront-auth.sh         # Lambda@Edge → CloudFront"
 echo "    bash scripts/12-setup-multi-account.sh           # 멀티 어카운트 설정"
 echo ""

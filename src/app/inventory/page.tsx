@@ -11,7 +11,7 @@ import {
 import SafeResponsiveContainer from '@/components/charts/SafeResponsiveContainer';
 import Header from '@/components/layout/Header';
 import DataTable from '@/components/table/DataTable';
-import { TrendingUp, Info, BarChart3 } from 'lucide-react';
+import { TrendingUp, Info, BarChart3, FileSpreadsheet } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface InventorySnapshot {
@@ -124,6 +124,7 @@ export default function InventoryPage() {
 
   const [history, setHistory] = useState<InventorySnapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [visibleResources, setVisibleResources] = useState<Set<string>>(new Set(PRIMARY_RESOURCES));
   const [period, setPeriod] = useState<30 | 90>(30);
 
@@ -131,7 +132,7 @@ export default function InventoryPage() {
     setLoading(true);
     try {
       const acctParam = currentAccountId && currentAccountId !== '__all__' ? `&accountId=${currentAccountId}` : '';
-      const res = await fetch(`/awsops/api/steampipe?action=inventory&days=90${acctParam}`);
+      const res = await fetch(`/api/steampipe?action=inventory&days=90${acctParam}`);
       const data = await res.json();
       setHistory(data.history || []);
     } catch {} finally { setLoading(false); }
@@ -264,6 +265,44 @@ export default function InventoryPage() {
   return (
     <div className="p-6 space-y-6 animate-fade-in">
       <Header title={t('inventory.title')} subtitle={t('inventory.subtitle')} onRefresh={fetchData} />
+
+      {/* Current-state XLSX export (one sheet per resource type) */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={async () => {
+            setExporting(true);
+            try {
+              const acct =
+                currentAccountId && currentAccountId !== '__all__'
+                  ? `?accountId=${currentAccountId}`
+                  : '';
+              const res = await fetch(`/api/inventory/export${acct}`);
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download =
+                res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ||
+                'musinsight-inventory.xlsx';
+              a.click();
+              URL.revokeObjectURL(url);
+            } catch (err) {
+              console.error('inventory export failed', err);
+            } finally {
+              setExporting(false);
+            }
+          }}
+          disabled={exporting}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border bg-navy-800 text-gray-300 border-navy-600 hover:text-white disabled:opacity-50"
+        >
+          <FileSpreadsheet size={15} />
+          {exporting ? t('inventory.exporting') : t('inventory.exportXlsx')}
+        </button>
+        {exporting && (
+          <span className="text-xs text-accent-cyan animate-pulse">{t('inventory.exportingHint')}</span>
+        )}
+      </div>
 
       {/* Empty data notice */}
       {history.length === 0 && !loading && (

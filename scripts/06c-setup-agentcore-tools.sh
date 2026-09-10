@@ -43,7 +43,7 @@ aws iam create-role --role-name AWSopsLambdaNetworkRole \
         "Version": "2012-10-17",
         "Statement": [{"Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}]
     }' \
-    --tags Key=Realm,Value=awsops Key=ServiceDomain,Value=aws Key=ServiceComponent,Value=awsops-poc Key=Environment,Value=sandbox \
+    --tags Key=Project,Value=awsops Key=Environment,Value=dev Key=ManagedBy,Value=script \
     2>/dev/null || true
 
 # Attach managed policies
@@ -168,7 +168,7 @@ echo "  EC2 IP: $EC2_IP | VPC: $EC2_VPC | Subnets: $PRIVATE_SUBNETS"
 LAMBDA_SG=$(aws ec2 create-security-group \
     --group-name awsops-lambda-steampipe-sg \
     --description "Lambda SG for Steampipe access" \
-    --tag-specifications 'ResourceType=security-group,Tags=[{Key=Realm,Value=awsops},{Key=ServiceDomain,Value=aws},{Key=ServiceComponent,Value=awsops-poc},{Key=Environment,Value=sandbox}]' \
+    --tag-specifications 'ResourceType=security-group,Tags=[{Key=Project,Value=awsops},{Key=Environment,Value=dev},{Key=ManagedBy,Value=script}]' \
     --vpc-id "$EC2_VPC" --region "$REGION" \
     --query "GroupId" --output text 2>/dev/null || \
     aws ec2 describe-security-groups \

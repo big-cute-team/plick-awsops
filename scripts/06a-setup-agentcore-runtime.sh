@@ -81,7 +81,7 @@ aws iam create-role --role-name AWSopsAgentCoreRole \
             {"Effect": "Allow", "Principal": {"Service": "bedrock-agentcore.amazonaws.com"}, "Action": "sts:AssumeRole"}
         ]
     }' \
-    --tags Key=Realm,Value=awsops Key=ServiceDomain,Value=aws Key=ServiceComponent,Value=awsops-poc Key=Environment,Value=sandbox \
+    --tags Key=Project,Value=awsops Key=Environment,Value=dev Key=ManagedBy,Value=script \
     2>/dev/null || true
 
 # Attach managed policy / 관리형 정책 연결
@@ -110,7 +110,7 @@ echo ""
 echo -e "${CYAN}[2/5] Creating ECR repository...${NC}"
 # Ignore if already exists / 이미 존재하면 무시
 aws ecr create-repository --repository-name awsops-agent \
-    --tags Key=Realm,Value=awsops Key=ServiceDomain,Value=aws Key=ServiceComponent,Value=awsops-poc Key=Environment,Value=sandbox \
+    --tags Key=Project,Value=awsops Key=Environment,Value=dev Key=ManagedBy,Value=script \
     --region "$REGION" 2>/dev/null || true
 ECR_URI="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/awsops-agent"
 echo "  ECR: $ECR_URI"
@@ -170,22 +170,55 @@ if [ -z "$RT_ID" ]; then
     exit 1
 fi
 
-# -- [5/5] Create Runtime Endpoint / 런타임 엔드포인트 생성 --------------------
+# -- [5/5] Wait for the DEFAULT endpoint / DEFAULT 엔드포인트 대기 --------------
+# 앱은 DEFAULT 엔드포인트로 호출한다(src/app/api/ai/route.ts 의 qualifier: 'DEFAULT').
+# DEFAULT 는 Runtime 생성 시 함께 만들어지므로 여기서 별도로 만들 것이 없다.
+#
+# 예전에는 여기서 awsops_endpoint 라는 이름의 엔드포인트를 추가로 만들었는데,
+#   - 앱이 그 엔드포인트를 쓰지 않았고,
+#   - Runtime 이 아직 CREATING 이면 ConflictException 으로 실패하면서 exit 1 해
+#     6b~6f 까지 통째로 막았다.
+# Runtime 은 이미 만들어진 상태라 6a 를 재실행하면 Runtime 이 중복 생성된다.
+#
+# The app invokes with qualifier 'DEFAULT', and DEFAULT is created with the runtime.
+# This step used to create an extra named endpoint the app never used, and failed the
+# whole script with ConflictException while the runtime was still CREATING — which
+# blocked 6b-6f, and re-running 6a would have created a duplicate runtime.
 echo ""
-echo -e "${CYAN}[5/5] Creating Runtime Endpoint...${NC}"
+echo -e "${CYAN}[5/5] Waiting for the runtime and its DEFAULT endpoint...${NC}"
 
-EP_RESULT=$(aws bedrock-agentcore-control create-agent-runtime-endpoint \
-    --agent-runtime-id "$RT_ID" --name awsops_endpoint \
-    --tags Project=awsops,Environment=dev,ManagedBy=script \
-    --region "$REGION" --output json 2>&1) || {
-    echo -e "  ${RED}ERROR: Failed to create Runtime Endpoint / 런타임 엔드포인트 생성 실패${NC}"
-    echo "$EP_RESULT" | head -10
-    echo -e "  ${YELLOW}Hint: Runtime may still be initializing. Wait and retry, or check permissions.${NC}"
-    echo -e "  ${YELLOW}      런타임이 아직 초기화 중일 수 있습니다. 잠시 후 재시도하세요.${NC}"
+for i in $(seq 1 60); do
+    RT_STATUS=$(aws bedrock-agentcore-control get-agent-runtime \
+        --agent-runtime-id "$RT_ID" --region "$REGION" \
+        --query 'status' --output text 2>/dev/null || echo "UNKNOWN")
+    [ "$RT_STATUS" = "READY" ] && break
+    case "$RT_STATUS" in
+        CREATE_FAILED|UPDATE_FAILED|DELETING)
+            echo -e "  ${RED}ERROR: Runtime status is $RT_STATUS${NC}"
+            exit 1 ;;
+    esac
+    printf "\r  Runtime: %-12s (%2ds)" "$RT_STATUS" $((i*10))
+    sleep 10
+done
+echo ""
+
+if [ "$RT_STATUS" != "READY" ]; then
+    echo -e "  ${RED}ERROR: Runtime did not become READY within 10 minutes (status: $RT_STATUS)${NC}"
+    echo -e "  ${YELLOW}      6a 를 재실행하지 마세요 — Runtime 이 중복 생성됩니다.${NC}"
+    echo -e "  ${YELLOW}      Do NOT re-run 6a; it would create a duplicate runtime.${NC}"
     exit 1
-}
-EP_ID=$(echo "$EP_RESULT" | python3 -c "import json,sys;d=json.load(sys.stdin);print(d.get('agentRuntimeEndpointId',d.get('endpointId','N/A')))" 2>/dev/null || echo "N/A")
-echo "  Endpoint ID: $EP_ID"
+fi
+echo -e "  ${GREEN}Runtime: READY${NC}"
+
+EP_STATUS=$(aws bedrock-agentcore-control list-agent-runtime-endpoints \
+    --agent-runtime-id "$RT_ID" --region "$REGION" \
+    --query "runtimeEndpoints[?name=='DEFAULT'].status | [0]" --output text 2>/dev/null || echo "None")
+if [ "$EP_STATUS" = "READY" ]; then
+    echo -e "  ${GREEN}Endpoint DEFAULT: READY${NC}"
+else
+    echo -e "  ${YELLOW}WARN: DEFAULT endpoint status is '$EP_STATUS' — AI 호출이 실패할 수 있습니다.${NC}"
+fi
+EP_ID="DEFAULT"
 
 # -- Summary -------------------------------------------------------------------
 echo ""
@@ -195,7 +228,7 @@ echo -e "${GREEN}===============================================================
 echo ""
 echo "  Runtime ID:   $RT_ID"
 echo "  Runtime ARN:  $RT_ARN"
-echo "  Endpoint ID:  $EP_ID"
+echo "  Endpoint:     $EP_ID (앱이 qualifier=DEFAULT 로 호출)"
 echo "  ECR Image:    ${ECR_URI}:latest (arm64)"
 echo ""
 echo "  Next: bash scripts/06b-setup-agentcore-gateway.sh"

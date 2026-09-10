@@ -147,19 +147,35 @@ echo ""
 echo -e "${CYAN}[3/4] Deploying 2 VPC Lambda functions (pg8000 → Steampipe :9193)...${NC}"
 echo -e "  ${YELLOW}NOTE: VPC Lambda requires Steampipe --database-listen network${NC}"
 
-# Auto-detect EC2 network config
-EC2_IP=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=*AWSops*" "Name=instance-state-name,Values=running" \
-    --query "Reservations[0].Instances[0].PrivateIpAddress" --output text --region "$REGION" 2>/dev/null || echo "")
-EC2_VPC=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=*AWSops*" "Name=instance-state-name,Values=running" \
-    --query "Reservations[0].Instances[0].VpcId" --output text --region "$REGION" 2>/dev/null || echo "")
-EC2_SG=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=*AWSops*" "Name=instance-state-name,Values=running" \
-    --query "Reservations[0].Instances[0].SecurityGroups[0].GroupId" --output text --region "$REGION" 2>/dev/null || echo "")
+# EC2 네트워크 정보 자동 탐지.
+# 인스턴스는 Name=awsops-server 로 고정돼 있다(CDK instanceName). 예전에는 와일드카드
+# `*AWSops*` 로 찾았는데, EC2 필터는 대소문자를 구분하므로 태그가 소문자로 정리된 뒤
+# 아무것도 못 찾았고, EC2_VPC 가 빈 값이 되어 이 단계가 조용히 실패했다.
+# The instance is pinned to Name=awsops-server (CDK instanceName). The old `*AWSops*`
+# wildcard silently matched nothing once the tag was normalised to lower case — EC2 tag
+# filters are case-sensitive — leaving EC2_VPC empty and failing this step.
+INSTANCE_JSON=$(aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=awsops-server" "Name=instance-state-name,Values=running" \
+    --query "Reservations[0].Instances[0].{ip:PrivateIpAddress,vpc:VpcId,sg:SecurityGroups[0].GroupId}" \
+    --output text --region "$REGION" 2>/dev/null || echo "")
+EC2_IP=$(echo "$INSTANCE_JSON" | awk '{print $1}')
+EC2_SG=$(echo "$INSTANCE_JSON" | awk '{print $2}')
+EC2_VPC=$(echo "$INSTANCE_JSON" | awk '{print $3}')
+
+if [ -z "$EC2_VPC" ] || [ "$EC2_VPC" = "None" ]; then
+    echo -e "  ${RED}ERROR: Name=awsops-server 태그가 붙은 실행 중인 인스턴스를 찾지 못했습니다.${NC}"
+    echo -e "  ${RED}ERROR: no running instance tagged Name=awsops-server${NC}"
+    exit 1
+fi
+
 PRIVATE_SUBNETS=$(aws ec2 describe-subnets \
     --filters "Name=vpc-id,Values=$EC2_VPC" "Name=tag:Name,Values=*Private*" \
     --query "Subnets[*].SubnetId" --output text --region "$REGION" 2>/dev/null | tr '\t' ',')
+if [ -z "$PRIVATE_SUBNETS" ]; then
+    echo -e "  ${RED}ERROR: $EC2_VPC 에서 프라이빗 서브넷을 찾지 못했습니다 / no private subnets found${NC}"
+    exit 1
+fi
+
 SP_PASS=$(steampipe service status --show-password 2>/dev/null | grep Password | awk '{print $2}')
 
 echo "  EC2 IP: $EC2_IP | VPC: $EC2_VPC | Subnets: $PRIVATE_SUBNETS"
@@ -179,10 +195,21 @@ aws ec2 authorize-security-group-ingress \
     --group-id "$EC2_SG" --protocol tcp --port 9193 \
     --source-group "$LAMBDA_SG" --region "$REGION" 2>/dev/null || true
 
-# Ensure Steampipe listens on network
-steampipe service stop 2>/dev/null || true
-sleep 2
-steampipe service start --database-listen network --database-port 9193 2>/dev/null
+# Steampipe 가 network 로 listen 하는지 확인한다.
+# systemd 유닛(Step 13)이 있으면 CLI 로 stop/start 하면 안 된다 — Restart=always 가
+# 즉시 되돌리면서 두 인스턴스가 9193 을 두고 경합한다. 유닛은 이미
+# --database-listen network 로 띄우므로 재시작 자체가 불필요하다.
+# With the Step 13 systemd unit present, a CLI stop/start fights Restart=always over
+# port 9193. The unit already starts Steampipe with --database-listen network, so
+# there is nothing to restart.
+if [ -f /etc/systemd/system/steampipe.service ]; then
+    sudo systemctl restart steampipe 2>/dev/null || true
+    sleep 5
+else
+    steampipe service stop 2>/dev/null || true
+    sleep 2
+    steampipe service start --database-listen network --database-port 9193 2>/dev/null
+fi
 
 # Build pg8000 package
 mkdir -p /tmp/vpc-lambda-pkg && cd /tmp/vpc-lambda-pkg && rm -rf *

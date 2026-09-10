@@ -68,7 +68,7 @@
 | Category | Page | Path | Features / 기능 |
 |----------|------|------|-----------------|
 | **Overview** | Dashboard | `/` | 18 StatsCards, Live Resources, Charts, Warnings |
-| | AI Assistant | `/ai` | Claude Opus 4.8, SSE streaming, multi-route |
+| | AI Assistant | `/ai` | Claude Opus 4.6, SSE streaming, multi-route |
 | | AgentCore | `/agentcore` | Runtime status, 8 Gateways, 125 tools |
 | | Bedrock | `/bedrock` | Model usage, token costs, prompt caching, Account vs AWSops |
 | | Accounts | /accounts | Multi-account management, target account CRUD (admin only) |
@@ -144,7 +144,8 @@ User Question / 사용자 질문
 ```
 
 ### 모델
-- **Claude Opus 4.8** (`global.anthropic.claude-opus-4-8`) — 단일 모델로 통일 / single model
+- **Claude Opus 4.6** (`global.anthropic.claude-opus-4-6-v1`) — 기본 모델 / default model
+  (Opus 4.7/4.8/5 는 배포 계정에 엔타이틀먼트가 없다 / not entitled to the deployment account)
 
 ### 8 AgentCore Gateways (125 MCP Tools)
 
@@ -349,7 +350,7 @@ awsops/
 │   ├── 06a~06e-setup-agentcore-* # Step 6a-6e: AgentCore (split)
 │   ├── 06f-setup-agentcore-memory.sh  # Step 6f: Memory Store (365-day retention)
 │   ├── 07-setup-opencost.sh            # Step 7: Prometheus + OpenCost (EKS cost)
-│   ├── 08-setup-cloudfront-auth.sh # Step 8: Lambda@Edge (upstream용 — musinsa는 SCP로 CloudFront 미사용)
+│   ├── 08-setup-cloudfront-auth.sh # Step 8: Lambda@Edge (deprecated — ALB Cognito 인증으로 대체)
 │   ├── 09-start-all.sh           # Start all services (systemctl-aware)
 │   ├── 10-stop-all.sh            # Stop all services (systemctl-aware)
 │   ├── 11-verify.sh              # Health check
@@ -414,7 +415,7 @@ CloudTrail, Cost Explorer 등을 **읽기 전용**으로 조회한다. Kubernete
 
 | 그 외 사용 | Region | 용도 |
 |---|---|---|
-| Bedrock (Opus 4.8) | ap-northeast-2 | AI 모델 (`global.*` 교차 리전 추론) |
+| Bedrock (Opus 4.6) | ap-northeast-2 | AI 모델 (`global.*` 교차 리전 추론) |
 | SSM Session Manager | ap-northeast-2 | EC2 접근 (SSH 키 불필요) |
 | OpenCost + Prometheus | EKS 클러스터 | 파드 단위 비용 분석 (선택) |
 
@@ -461,7 +462,7 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for details.
 - [ARCHITECTURE.md](scripts/ARCHITECTURE.md) — 전체 아키텍처 상세
 - [INSTALL_GUIDE.md](docs/INSTALL_GUIDE.md) — 설치 가이드
 - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — 알려진 이슈 + 해결법
-- [runbooks/musinsa-deployment.md](docs/runbooks/musinsa-deployment.md) — musinsa dev1 배포 주의사항 (재배포 시 필독)
+- [runbooks/plick-deployment.md](docs/runbooks/plick-deployment.md) — plick 배포 주의사항 (재배포 시 필독)
 - [ADR-009](docs/decisions/009-alb-cognito-auth.md) — CloudFront 대신 ALB Cognito 인증을 쓰는 이유
 - [CHANGELOG.md](CHANGELOG.md) — 변경 이력
 

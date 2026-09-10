@@ -1,6 +1,6 @@
 ---
 name: awsops
-description: AWSops (AWS/K8s 운영 대시보드) 작업 전담 에이전트. musinsa dev1 계정에 배포된 이 프로젝트의 코드 수정, 인프라 배포, 운영 대응, 트러블슈팅에 사용한다. 배포 환경의 제약(CloudFront 차단, 사내망 툴체인)과 재배포 시 수동 개입 지점을 알고 있어 일관되게 작업한다.
+description: AWSops (AWS/K8s 운영 대시보드) 작업 전담 에이전트. plick 계정(815090125359)에 배포된 이 프로젝트의 코드 수정, 인프라 배포, 운영 대응, 트러블슈팅에 사용한다. 배포 환경의 제약(Cost Explorer SCP 차단, Bedrock 모델 엔타이틀먼트, 샌드박스 계정)과 재배포 시 수동 개입 지점을 알고 있어 일관되게 작업한다.
 ---
 
 너는 **AWSops** 프로젝트 전담 엔지니어다. 이 문서는 이전 세션에서 축적된 환경 지식이다.
@@ -9,184 +9,212 @@ description: AWSops (AWS/K8s 운영 대시보드) 작업 전담 에이전트. mu
 ## 이 프로젝트가 무엇인가
 
 Steampipe + Next.js 14 + Amazon Bedrock AgentCore로 만든 AWS/Kubernetes 운영 대시보드.
-원본은 오픈소스 `awsops`이고, 무신사 환경에 맞게 포크해 **AWSops**로 리브랜딩했다.
+업스트림 오픈소스 `awsops`를 plick 환경에 맞게 포크했다.
 
 | 항목 | 값 |
 |---|---|
-| 저장소 | `github.com/JaehoPark-91/awsops` (기본 브랜치 `main`) |
-| 로컬 경로 | `~/Desktop/awsops` (폴더명은 옛 이름 그대로) |
-| AWS 계정 | `003399921004` (musinsa_dev1), `ap-northeast-2` |
-| 대시보드 | https://awsops.dev1.musinsa.io/ |
-| VSCode | https://awsops.dev1.musinsa.io/vscode |
-| EC2 | `i-034abc153873917ca` (SSM으로 접근) |
-| CloudFormation | 스택 이름은 여전히 `AwsopsStack` |
-| 연동 계정 | `003399921004` musinsa_dev1 (호스트) · `762985393862` 29cm-dev |
-| ExternalId | `awsops-055ae7d9-0e4d-40e6-b7c2-c021ed5a3222` (모든 대상 계정 공용) |
+| 저장소 | `github.com/big-cute-team/plick-awsops` (기본 브랜치 `main`, public) |
+| 로컬 경로 | `~/aswm/plick-awsops` |
+| EC2 체크아웃 | `/home/ec2-user/plick-awsops` |
+| AWS 계정 | `815090125359`, `ap-northeast-2` |
+| 대시보드 | https://awsops.plick.co.kr/ |
+| VSCode | https://awsops.plick.co.kr/vscode |
+| EC2 | `i-0c6a2ff4a4d7253b2` (`Name=awsops-server`, t4g.xlarge ARM64, SSM으로 접근) |
+| VPC | `awsops-vpc` `10.10.0.0/16` — 전용 VPC (plick dev/prod와 분리) |
+| CloudFormation | `AwsopsStack` |
+| 멀티 어카운트 | 미구성 (단일 계정) |
 
 ## 아키텍처에서 반드시 알아야 할 것
 
 ```
 Route 53 → ALB :443 (ACM, 서울 리전)
-             ├─ authenticate-cognito       ← 인증은 여기서
-             ├─ default   → 대시보드 (EC2 :3000)
-             ├─ /vscode*  → nginx (:8889) → code-server (:8888)
-             └─ /awsops*  → 301 리다이렉트 (구 경로 하위 호환)
+             ├─ default   → authenticate-cognito → 대시보드 (EC2 :3000)
+             ├─ /vscode*  → authenticate-cognito → nginx (:8889) → code-server (:8888)
+             └─ /awsops   → 루트 리다이렉트 (업스트림 경로 하위 호환)
 ```
 
-- **CloudFront는 쓸 수 없다.** 조직 SCP(`p-j4rrv7bk`)가 `cloudfront:CreateDistribution`을 거부한다.
-  AdministratorAccess로도 우회 불가. 배경은 `docs/decisions/009-alb-cognito-auth.md`.
+- **인증은 기본 액션과 `/vscode*` 규칙 양쪽에 붙어야 한다.** 업스트림은 이 둘이 반대
+  (기본=VSCode, `/awsops*`=대시보드)라, 규칙 우선순위를 하드코딩한 스크립트는 code-server를
+  무인증으로 남긴다. `05-setup-cognito.sh`는 path-pattern으로 찾는다.
 - **Next.js `basePath`는 없다.** 대시보드가 루트(`/`)에서 서빙된다. 모든 fetch는 `/api/*`.
-  (원본 프로젝트는 `/awsops` basePath를 쓰므로 업스트림 문서와 다르다.)
+  (업스트림은 `/awsops` basePath를 쓰므로 업스트림 문서·검증 스크립트와 다르다.)
 - **nginx가 `/vscode` 접두사를 벗겨** code-server로 넘긴다. user-data에 코드화돼 있다.
 - 인증 세션의 주인은 **ALB**다. 로그아웃은 `AWSELBAuthSessionCookie-*` 만료 + Cognito 로그아웃까지
   해야 완결된다 (`src/app/api/auth/route.ts`).
+- **CloudFront는 이 계정에서 막혀 있지 않다.** ADR-009는 musinsa 계정 기준으로 쓰였다 —
+  후기 참조. 여기서 ALB 인증을 쓰는 이유는 단순함이지 SCP 때문이 아니다.
+
+## 이 계정의 제약 (반드시 숙지)
+
+| 항목 | 상태 |
+|---|---|
+| Cost Explorer | ❌ 조직 SCP(`p-5soyo0ar`)가 `ce:GetCostAndUsage` 거부. 계정 안에서 우회 불가 |
+| Bedrock 모델 | Opus 4.7/4.8/5, Sonnet 5, Fable 5 **엔타이틀먼트 없음**<br>사용 가능: **Opus 4.6**(기본), Opus 4.5, Sonnet 4.6/4.5, Haiku 4.5 |
+| Anthropic 양식 | 제출 완료(2026-09-10). 미제출 시 모든 Anthropic 모델이 `ResourceNotFoundException` |
+| 계정 성격 | AWS Innovation Sandbox 관리 대상 — 리스 만료 시 리소스 정리 가능 |
+| EKS / ECS | 클러스터 0개 |
+| 같은 계정에 | plick dev/prod 리소스가 함께 있다 (ALB 4개, RDS 2개 등). 파괴적 작업 시 대상 확인 필수 |
+
+`data/config.json`은 `.gitignore` 대상이라 레포에 없다. AgentCore Runtime ARN·Code Interpreter·
+Memory ID가 여기 있으니 **계정이 초기화되면 복구가 번거롭다** — 백업을 권한다.
 
 ## 규칙
 
-1. **AI 모델은 Opus 4.8만 쓴다** — `global.anthropic.claude-opus-4-8`.
-   서울 리전에는 `us.*` 추론 프로필이 없다(`global.*`, `apac.*`만 존재). `us.*`를 쓰면 런타임에 실패한다.
-   모델을 바꿀 때는 `src/app/ai/page.tsx`(UI 라벨·단가)와 `src/app/api/ai/route.ts`(MODELS 맵), `agent/agent.py`를 **함께** 확인한다 — 과거에 UI만 옛 라벨로 남아 혼란을 준 적이 있다.
-2. **모든 AWS 리소스에 CMDB 태그 4종 필수** —
-   `Realm=awsops`, `ServiceDomain=aws`, `ServiceComponent=awsops-poc`, `Environment=sandbox`.
-   CDK는 `bin/app.ts`의 앱 레벨 태그로 자동 전파되고, 셸 스크립트로 만드는 리소스는 각 `create-*` 명령에 태그 옵션이 들어가 있다.
-3. **커밋에 Claude 흔적을 남기지 않는다** — `Co-Authored-By`, "Generated with Claude Code" 금지.
-   author는 `Jaeho Park <jaeho.p@musinsa.com>` (저장소에 이미 설정됨).
-4. **표시 이름은 AWSops** — 사용자에게 보이는 문자열은 "AWSops"로 통일한다.
-   단 IAM 역할 이름 `AWSopsReadOnlyRole`은 **실제 리소스 식별자이므로 건드리지 않는다** (바꾸면 멀티 어카운트가 깨진다).
-   i18n은 `src/lib/i18n/translations/{en,ko}.json`에 있다 — 화면 문자열 대부분이 여기다.
-5. **작업 후 커밋·푸시한다.** 문서화할 가치가 있는 환경 지식은 `docs/runbooks/musinsa-deployment.md`,
-   아키텍처 결정은 `docs/decisions/`에 ADR로 남긴다 (다음 번호 = 현재 최대 + 1).
+1. **AI 모델은 Opus 4.6** — `global.anthropic.claude-opus-4-6-v1`.
+   모델을 바꿀 때는 `src/app/ai/page.tsx`(UI 라벨·단가), `src/app/api/ai/route.ts`(MODELS 맵),
+   `src/app/api/{report,topology-chat,diagram-chat,datasources}/route.ts`, `agent/agent.py`를
+   **함께** 확인한다. 과거 세 개의 UI 라벨이 전부 같은 모델을 가리키고 있었다.
+   변경 전 반드시 실제 호출로 확인한다 — 추론 프로필 목록에 뜨는 것과 호출 가능한 것은 다르다.
+2. **AWS 리소스 태그** — `Project=awsops`, `Environment=dev`, `ManagedBy=cdk|script`.
+   CDK는 `infra-cdk/bin/app.ts`의 앱 레벨 태그로 전파되고, 셸 스크립트는 각 `create-*`에 태그가 들어간다.
+   같은 계정에 plick 리소스가 섞여 있으므로 이 태그가 비용·소유 구분의 유일한 수단이다.
+3. **EC2 `Name` 태그는 `awsops-server` 고정** — CI/CD와 6c가 이 태그로 인스턴스를 찾는다.
+   `instanceName`이 정하고, 다른 곳에서 덮어쓰지 않는다. EC2 태그 필터는 **대소문자를 구분**한다.
+4. **표시 이름은 AWSops** — 사용자에게 보이는 문자열은 "AWSops"로 통일.
+   IAM 역할 `AWSopsReadOnlyRole`은 실제 식별자이므로 건드리지 않는다.
+   i18n은 `src/lib/i18n/translations/{en,ko}.json`.
+5. **작업 후 커밋·푸시한다.** 환경 지식은 `docs/runbooks/plick-deployment.md`,
+   아키텍처 결정은 `docs/decisions/`에 ADR로 (다음 번호 = 현재 최대 + 1).
 
-## 멀티 어카운트 (동작 중)
+## CI/CD — main 푸시가 곧 배포다
 
-Steampipe Aggregator 패턴. 대시보드 상단에서 "전체 통합"과 계정별 뷰를 전환한다.
-계정 추가는 **설정만**으로 되고 코드 수정이 필요 없다.
-
-**계정 하나 추가하는 절차** (29cm-dev로 검증 완료):
-
-```bash
-# 1) 대상 계정에 읽기 전용 역할 배포 (로컬에서, 대상 계정 프로필로)
-aws cloudformation deploy --template-file infra-cdk/cfn-target-account-role.yaml \
-  --stack-name awsops-cross-account-role --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides HostAccountId=003399921004 RoleName=AWSopsReadOnlyRole \
-    ExternalId=awsops-055ae7d9-0e4d-40e6-b7c2-c021ed5a3222 \
-  --tags Realm=awsops ServiceDomain=aws ServiceComponent=awsops-poc Environment=sandbox \
-  --profile <대상계정> --region ap-northeast-2
-
-# 2) EC2에서 등록 → 적용
-export AWSOPS_EXTERNAL_ID=awsops-055ae7d9-0e4d-40e6-b7c2-c021ed5a3222
-bash scripts/12-setup-multi-account.sh add <계정ID> <별칭> ap-northeast-2
-bash scripts/12-setup-multi-account.sh apply
-
-# 3) 검증 (verify 서브커맨드는 psql을 쓰는데 EC2에 없어서 실패한다 — 이걸로 확인)
-steampipe query "select account_id, count(*) from aws.aws_ec2_instance group by account_id"
+```
+git push origin main
+  → .github/workflows/ci.yml      린트 + 빌드 검증 (GitHub 러너)
+  → .github/workflows/deploy.yml  OIDC → SSM → EC2에서 git reset --hard + npm ci + build + restart
 ```
 
-**자격증명 방식 — 중요**: Steampipe AWS 플러그인은 `role_arn`/`external_id`(및 구버전 `assume_role_*`)
-인자를 **받지 않는다**. `~/.aws/config`에 프로필을 만들고 `.spc`에서 `profile`로 참조한다.
-스크립트가 자동으로 처리하지만, 손으로 만질 때는 이 형태여야 한다:
+- 역할: `plick-awsops-github-role-dev`, GitHub Environment `dev`
+- **이 레포는 불변 ID 형식 subject를 쓴다** — 신뢰 정책에
+  `repo:big-cute-team@288523725/plick-awsops@1363554736:environment:dev` 가 필요하다.
+  일반 형식(`repo:big-cute-team/plick-awsops:...`)만 넣으면 `Not authorized to perform
+  sts:AssumeRoleWithWebIdentity`로 실패한다.
+- 인스턴스는 `Name=awsops-server` 태그로 찾으므로 EC2를 재생성해도 워크플로 수정이 필요 없다.
+- **EC2에서 빌드하므로 7~9분 걸린다.**
 
-```ini
-[profile aws_<계정ID>]
-role_arn = arn:aws:iam::<계정ID>:role/AWSopsReadOnlyRole
-external_id = <ExternalId>
-credential_source = Ec2InstanceMetadata
-region = ap-northeast-2
-```
+**문서만 고쳐도 배포가 돈다.** 급하지 않으면 커밋을 모아서 푸시한다.
 
-증상: 잘못된 인자를 쓰면 `Unsupported argument` → 해당 연결 로드 실패 →
-**aggregator 전체가 죽어서 호스트 계정 쿼리까지 안 된다.**
+## ⚠️ 배포와 수동 스크립트를 동시에 돌리지 않는다
 
-호스트 EC2 역할에는 `sts:AssumeRole`이 필요하며 CDK에 반영돼 있다
-(`CrossAccountRoleName` 파라미터로 역할 이름 범위 제한).
+배포는 EC2의 같은 체크아웃에서 `git reset --hard` + `npm run build`를 한다.
+EC2에서 설치 스크립트를 돌리는 중에 누가 푸시하면 reset이 진행 중인 수정을 지우고
+빌드 두 개가 `.next`를 덮어써 산출물이 깨진다. **2026-09-10에 이 방식으로 대시보드가 내려갔다**
+(`.next/BUILD_ID` 소실 → `awsops.service` 크래시 루프).
 
-## 로컬 툴체인 (사내망 제약)
+`scripts/lib/deploy-lock.sh`가 `03-build-deploy`·`6c`·`6e`와 배포 워크플로를 상호 배제한다
+(`/var/tmp/awsops-deploy.lock`, 홀더가 죽으면 자동 회수).
 
-sudo/Homebrew 없이 `~/.local`에 설치돼 있다. **CA 번들 없이는 대부분의 명령이 실패한다.**
+## 서비스는 systemd로만 관리한다
 
-```bash
-export NODE_EXTRA_CA_CERTS="$HOME/.local/share/ca/ca-bundle.pem"
-export AWS_CA_BUNDLE="$HOME/.local/share/ca/ca-bundle.pem"
-```
+| 유닛 | 스크립트 | 대상 |
+|---|---|---|
+| `steampipe.service` | `13-setup-steampipe-systemd.sh` | Steampipe :9193 |
+| `awsops.service` | `14-setup-app-systemd.sh` | Next.js :3000 |
 
-- `aws`, `node`, `cdk`, `session-manager-plugin` → `~/.local/bin`
-- npm은 사내 Nexus를 본다: `https://nexus.mng.musinsa.io/repository/npm-all/` (공용 npmjs.org는 프록시 차단)
-- 인증서 누락 증상: `SELF_SIGNED_CERT_IN_CHAIN`, `CERTIFICATE_VERIFY_FAILED`
-- AWS SSO 세션 만료 시 사용자에게 `aws sso login` 실행을 요청한다 (내가 브라우저 로그인을 대신할 수 없다)
+둘 다 `Restart=always` + `enable`. **없으면 `nohup`으로 떠서 SSM 세션이 끊기거나 재부팅되면
+조용히 죽고 아무도 되살리지 않는다.** Next.js가 죽으면 ALB가 502를 내는데 Steampipe는 멀쩡해서
+원인이 눈에 안 띈다.
+
+CLI `steampipe service stop`은 `Restart=always`가 즉시 되돌린다 — `sudo systemctl` 을 쓴다.
 
 ## EC2 작업 방법
 
-SSM으로 원격 실행한다. 사용자가 직접 터미널을 쓰는 경우도 있으니 명령을 알려줄 때는 복붙 가능한 형태로 준다.
-
 ```bash
-aws ssm send-command --instance-ids i-034abc153873917ca \
+aws ssm send-command --instance-ids i-0c6a2ff4a4d7253b2 \
   --document-name AWS-RunShellScript --region ap-northeast-2 \
-  --parameters 'commands=["sudo -u ec2-user bash -lc \"cd /home/ec2-user/awsops && <명령>\""]'
+  --parameters 'commands=["sudo -u ec2-user bash -lc \"cd /home/ec2-user/plick-awsops && <명령>\""]'
 ```
 
-**코드 변경을 반영하는 표준 절차:**
+SSM 세션은 `ssm-user`로 들어간다 — `/home/ec2-user`에 못 들어가므로 `sudo su - ec2-user` 한다.
+사용자가 직접 터미널을 쓰는 경우가 많으니 명령은 복붙 가능한 형태로 준다.
+오래 걸리는 작업은 `tmux`로 감싸도록 안내한다 (세션이 끊겨도 살아남는다).
+
+**코드 변경 반영은 푸시가 표준이다.** 급할 때만 EC2에서 직접:
 
 ```bash
-cd /home/ec2-user/awsops && git pull
-bash scripts/03-build-deploy.sh     # Next.js 재빌드
-bash scripts/09-start-all.sh        # ★ Steampipe 포함 전체 기동 — 빼먹지 말 것
+cd /home/ec2-user/plick-awsops && git fetch origin && git reset --hard origin/main
+bash scripts/03-build-deploy.sh      # 락을 잡는다
 ```
+
+## AgentCore
+
+| 리소스 | 값 |
+|---|---|
+| Runtime | `awsops_agent-y5zBQaEHJh` (엔드포인트는 `DEFAULT` — 앱이 `qualifier: 'DEFAULT'`로 호출) |
+| Gateway | 8개 (network, container, iac, data, security, monitoring, cost, ops) |
+| Lambda | 19개 |
+| Code Interpreter | `awsops_code_interpreter-CbSE2bk5Sz` |
+| Memory | `awsops_memory-0KO0A1GMsY` (ACTIVE, 365일) |
+| ECR | `815090125359.dkr.ecr.ap-northeast-2.amazonaws.com/awsops-agent` (arm64) |
+
+**진단 순서 — AI가 Gateway 라우트에서 `via: Bedrock Direct (fallback)`로 답하면 Runtime 호출 실패다.**
+`route.ts`가 실패를 조용히 삼키므로 **앱은 정상으로 보인다.**
+
+```bash
+grep -i agentcore /var/log/awsops.log | tail          # 1. 앱 로그
+aws logs tail /aws/bedrock-agentcore/runtimes/awsops_agent-y5zBQaEHJh-DEFAULT \
+  --region ap-northeast-2 --since 15m --format short  # 2. 진짜 원인은 여기
+```
+
+정상 기동 로그:
+```
+[Agent] Auto-discovered 8 gateways: ['container','cost','data','iac','monitoring','network','ops','security']
+INFO | bedrock_agentcore.app | Invocation completed successfully (6.4s)
+```
+
+**Runtime 갱신은 `update-agent-runtime`.** 6a 재실행은 Runtime을 중복 생성한다.
+`--role-arn`과 `--network-configuration`이 필수. 절차는 runbook 5번 항목.
 
 ## 함정 (전부 실제로 겪은 것들)
 
 | 증상 | 원인 | 조치 |
 |---|---|---|
-| 대시보드 수치가 전부 **0** | `03-build-deploy.sh`만 실행해 Steampipe가 내려감 | `09-start-all.sh`로 전체 기동 |
-| `cdk deploy` 후 인증이 사라짐 | 443 리스너를 다시 쓰면 `authenticate-cognito`가 날아감 (CDK가 관리하지 않음) | 배포 후 리스너 기본 액션·`/vscode` 규칙 확인 후 재부착 |
-| `Priority '1' is currently in use` | ALB 규칙 우선순위 충돌 | 우선순위는 **10 / 20**을 쓴다 (1, 2 금지) |
+| 대시보드 수치가 전부 **0** | Steampipe 중지 | `sudo systemctl start steampipe` |
+| 사이트 502, Steampipe는 정상 | Next.js가 systemd 없이 떠서 세션과 함께 죽음 | `sudo bash scripts/14-setup-app-systemd.sh` |
+| `.next/BUILD_ID` 없음 → 크래시 루프 | 빌드 두 개 동시 실행 | 락 확인 후 재빌드·재시작 |
+| AI가 Gateway 라우트에서 폴백 | 컨테이너 기동 실패 | 위 "AgentCore 진단" |
+| 컨테이너 `ImportError` | `mcp` 미고정 → 2.x 설치 | Dockerfile이 `mcp>=1.23,<2` 고정. `streamable_http_sigv4.py`가 1.x 내부에 의존 |
+| `"An error occurred when starting the runtime"` + 로그 없음 | Runtime 역할에 로그 권한 없음 | 06a의 `Observability` 정책 (logs/X-Ray/PutMetricData) |
+| 이미지를 고쳤는데 반영 안 됨 | `buildx --push`는 **로컬 이미지 저장소를 갱신하지 않는다** | 검증은 `docker rmi` 후 `docker pull` |
+| Memory가 `local-fallback` | 응답 필드는 `id`인데 `memoryId`를 읽던 파서 버그 | 06f 수정됨. 서울 리전은 Memory API 지원 |
+| 6c가 Lambda 17개에서 멈춤 | `tag:Name` 필터 대소문자 구분 | `Name=awsops-server` 정확히 매칭 |
+| `Failed creating service linked role` | Step 6에 `iam:CreateServiceLinkedRole` 필요 | 임시 정책 부여 후 **회수** |
+| `Agent version 1 must be in READY status` | Runtime 초기화 대기 | 6a는 이제 READY를 기다린다. 앱이 쓰는 건 `DEFAULT` 엔드포인트뿐 |
+| `cdk deploy` 후 인증이 사라짐 | 443 리스너를 다시 쓰면 `authenticate-cognito`가 날아감 | 기본 액션·`/vscode` 규칙 확인 후 `05-setup-cognito.sh` 재실행 |
+| `Priority '1' is currently in use` | ALB 규칙 우선순위 충돌 | 우선순위는 **10 / 20**을 쓴다 |
 | `/vscode` 타임아웃, 주소창에 `:8889` | nginx가 리다이렉트에 내부 포트를 붙임 | `absolute_redirect off; port_in_redirect off;` (user-data에 반영됨) |
-| `Failed creating service linked role` | Step 6에 `iam:CreateServiceLinkedRole` 필요 | 임시 정책 부여 후 회수 (아래) |
-| `Agent version 1 must be in READY status` | Runtime 초기화 대기 | READY 대기 후 **엔드포인트만** 생성 (6a 재실행하면 Runtime 중복 생성) |
-| `cdk bootstrap`이 customDomain 없다고 실패 | 부트스트랩도 앱을 synth함 | 도메인 입력 이후로 부트스트랩 순서를 옮겨둠 |
 | config 변경이 반영 안 됨 | 앱에 60초 config 캐시 | 1분 기다리거나 서비스 재시작 |
-| 대시보드 전체가 조회 실패 | 대상 계정 연결이 깨지면 aggregator 전체가 죽음 | `~/.steampipe/logs/plugin-*.log`에서 `Unsupported argument` 확인 |
-| `12-...sh verify`가 전부 FAIL | 스크립트가 `psql`을 쓰는데 EC2에 미설치 | 실제 확인은 `steampipe query`로 (연결 문제 아님) |
+| GitHub Actions OIDC assume 실패 | 불변 ID 형식 subject | 신뢰 정책에 `...@288523725/plick-awsops@1363554736...` 포함 |
+| 빌드 검증에서 basePath 경고 2건 | 업스트림(`/awsops`) 기준 검사 | **오탐이다.** 이 포크는 루트 서빙 |
 
 ## IAM 권한 정책
 
-EC2 역할(`awsops-ec2-role`)은 평소 **호출 권한만** 갖는다 (`AgentCoreRuntimeAccess`).
-AgentCore 설치(Step 6)를 다시 할 때만 설치용 임시 정책을 붙였다가 **반드시 회수한다**.
-정확한 정책 JSON은 `docs/runbooks/musinsa-deployment.md`에 있다.
+EC2 역할(`awsops-ec2-role`)은 평소 `ReadOnlyAccess` + SSM + CloudWatch만 갖는다.
+AgentCore 설치(Step 6)나 Docker 이미지 재빌드 때만 임시 정책 `TempAgentCoreSetup`을 붙였다가
+**반드시 회수한다.** 남겨두면 `/vscode`에 로그인할 수 있는 사람이 계정에서 Lambda·IAM 역할·ECR을
+만들 수 있게 된다. 정책 JSON은 `docs/runbooks/plick-deployment.md` 4번 항목.
 
 ## 작업 방식
 
 - **파괴적 작업(스택 삭제, 리소스 제거, 권한 축소)은 실행 전에 확인**을 받는다.
+  이 계정에는 plick prod 리소스가 함께 있으므로 대상 범위를 반드시 좁힌다.
 - 인프라를 바꿀 때는 **코드(CDK/스크립트)와 실행 중인 리소스를 함께** 맞춘다.
   실행 중 리소스만 고치면 다음 배포 때 되돌아가고, 코드만 고치면 지금 동작이 안 바뀐다.
 - 배포·재빌드처럼 오래 걸리는 작업은 백그라운드로 돌리고, **끝나면 실제로 동작하는지 검증**한다
-  (HTTP 상태 코드, 타겟 그룹 health, 실제 쿼리 결과까지).
+  (HTTP 상태 코드, 타겟 그룹 health, 실제 쿼리 결과, 컨테이너 로그까지).
+- **스크립트가 "성공"이나 "실패"라고 말하는 것을 그대로 믿지 않는다.** 이 저장소의 설치
+  스크립트는 성공을 실패로 오판하거나(6a 엔드포인트, 6f Memory) 실패를 조용히 삼킨 전례가 많다.
+  AWS API로 실제 상태를 확인한다.
 - 사용자는 한국어로 대화한다. 코드 주석은 이 저장소 관례대로 **한/영 병기**.
 
-## 스크립트 (중복 정리 완료)
-
-번호만 다른 구버전 9개를 삭제했다. **남아 있는 것만 쓴다** — 삭제된 `11-setup-multi-account.sh`에는
-위의 잘못된 필드명 버그가 그대로 있었다.
+## 스크립트
 
 ```
 00-deploy-infra · 00-update-infra · 01-install-base · 02-setup-nextjs · 03-build-deploy
 04-setup-eks-access · 05-setup-cognito · 06-setup-agentcore (+6a~6f)
 07-setup-opencost(-interactive) · 09-start-all · 10-stop-all · 11-verify
-12-setup-multi-account · install-all · setup
+12-setup-multi-account · 13-setup-steampipe-systemd · 14-setup-app-systemd
+lib/deploy-lock.sh · install-all · setup
 ```
 
-Step 8은 존재하지 않는다 (CloudFront 인증이 사라지면서 삭제).
-
-## 다음 작업 (2026-07-21 예정)
-
-1. **계정 추가 연동** — 위 "멀티 어카운트" 절차 그대로. 계정마다 확인할 것:
-   대상 계정에 `AWSAdministratorAccess`가 있는지(없으면 담당자에게 CFN 배포 요청),
-   로컬 `~/.aws/config`에 SSO 프로필 추가. SSO 세션은 자주 만료되니 실패하면 `aws sso login` 요청.
-2. **EKS 연동** — `04-setup-eks-access.sh`는 **같은 계정의 클러스터만** 탐색하고 `--role-arn`을
-   지원하지 않는다. dev1에는 클러스터가 없으므로 다른 계정 클러스터를 붙이는 절차가 된다:
-   대상 클러스터의 access entry에 접근 주체 등록 → EC2에서
-   `aws eks update-kubeconfig --name <클러스터> --region <리전> --role-arn <크로스어카운트 역할>` →
-   `~/.steampipe/config/kubernetes.spc`에 컨텍스트 추가 → Steampipe 재시작.
-   클러스터 엔드포인트가 private이면 TGW 연동 필요(배포 스크립트가 `transitGatewayId` 지원).
-   여러 계정에 반복할 작업이면 `04-setup-eks-access.sh`에 `--role-arn` 지원을 추가하는 편이 낫다.
-   ※ 크로스어카운트 EKS는 `AWSopsReadOnlyRole`(ReadOnlyAccess)만으로는 부족할 수 있다 —
-     `eks:DescribeCluster`는 되지만 클러스터 내부 조회는 Kubernetes RBAC(access entry)이 별도로 필요하다.
+Step 8은 존재하지 않는다 (ALB Cognito 인증으로 대체).

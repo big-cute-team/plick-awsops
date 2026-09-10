@@ -12,6 +12,15 @@ name: Deploy to EC2
 on:
   push:
     branches: [main]
+    # 문서만 바뀐 커밋으로 EC2에서 8분짜리 빌드를 돌릴 이유가 없다.
+    # 배포가 필요하면 workflow_dispatch 로 수동 실행한다.
+    # No point spending an 8-minute EC2 build on a docs-only commit; use
+    # workflow_dispatch if one is needed anyway.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.claude/**'
+      - 'LICENSE'
   workflow_dispatch:
 
 # 배포가 겹치면 git reset 과 npm run build 가 서로를 덮어쓴다. 순차 실행을 강제한다.

@@ -454,14 +454,14 @@ export class AwsopsStack extends cdk.Stack {
 
     // -------------------------------------------------------
     // Custom Domain + ACM Certificate (HTTPS 필수 — ALB Cognito 인증 전제조건)
-    // Usage: cdk deploy -c customDomain=awsops.dev1.musinsa.io
+    // Usage: cdk deploy -c customDomain=awsops.plick.co.kr
     // -------------------------------------------------------
     const customDomain = this.node.tryGetContext('customDomain') as string | undefined;
     if (!customDomain) {
-      throw new Error('customDomain context is required (e.g. -c customDomain=awsops.dev1.musinsa.io) — ALB Cognito auth needs an HTTPS listener');
+      throw new Error('customDomain context is required (e.g. -c customDomain=awsops.plick.co.kr) — ALB Cognito auth needs an HTTPS listener');
     }
     const hostedZoneNameCtx = this.node.tryGetContext('hostedZoneName') as string | undefined;
-    // 'awsops.dev1.musinsa.io' → 'dev1.musinsa.io'
+    // 'awsops.plick.co.kr' → 'plick.co.kr'
     const zoneName = hostedZoneNameCtx || customDomain.split('.').slice(1).join('.');
     const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
       domainName: zoneName,

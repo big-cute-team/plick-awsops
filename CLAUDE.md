@@ -1,7 +1,7 @@
 # AWSops 대시보드 v1.8.0 — Claude 컨텍스트
 
-> 무신사 배포판. 업스트림 `awsops`에서 포크 — 화면 표기와 저장소/스택/리소스 이름 모두 `awsops` 계열이다.
-> 배포 환경 제약과 재배포 시 주의사항: `docs/runbooks/musinsa-deployment.md` · 전담 에이전트: `.claude/agents/awsops.md`
+> plick 배포판. 업스트림 `awsops`에서 포크 — 화면 표기와 저장소/스택/리소스 이름 모두 `awsops` 계열이다.
+> 배포 환경 제약과 재배포 시 주의사항: `docs/runbooks/plick-deployment.md` · 전담 에이전트: `.claude/agents/awsops.md`
 
 ## 프로젝트 개요
 실시간 AWS/Kubernetes 리소스 모니터링, 네트워크 문제 해결, CIS 컴플라이언스, AI 기반 분석, 외부 데이터소스 연동, AI 종합 진단을 제공하는 운영 대시보드.
@@ -11,12 +11,24 @@ Steampipe, Next.js 14, Amazon Bedrock AgentCore로 구축.
 - **프론트엔드**: Next.js 14 (App Router) + Tailwind CSS 다크 테마 + Recharts + React Flow
 - **데이터**: Steampipe 내장 PostgreSQL (포트 9193) — AWS 380+ 테이블, K8s 60+ 테이블, 멀티 어카운트 Aggregator
 - **외부 데이터소스**: Prometheus, Loki, Tempo, ClickHouse, Jaeger, Dynatrace, Datadog (SSRF 방지 + allowlist)
-- **AI 엔진**: Bedrock Opus 4.8 (`global.anthropic.claude-opus-4-8`) + AgentCore Runtime (Strands) + 8 Gateway (125 MCP 도구) + 19 Lambda
-- **AI 진단**: 15섹션 Bedrock Opus 4.8 분석 + DOCX/MD/PDF 내보내기 + 자동 스케줄링
-- **인증**: Cognito User Pool + ALB `authenticate-cognito` 리스너 액션 (조직 SCP가 CloudFront 차단 — ADR-009)
-- **인프라**: CDK (`infra-cdk/`) → ALB (HTTPS, ACM 서울 리전) → EC2 (t4g.2xlarge, Private Subnet)
+- **AI 엔진**: Bedrock Opus 4.6 (`global.anthropic.claude-opus-4-6-v1`) + AgentCore Runtime (Strands) + 8 Gateway (125 MCP 도구) + 19 Lambda
+- **AI 진단**: 15섹션 Bedrock Opus 4.6 분석 + DOCX/MD/PDF 내보내기 + 자동 스케줄링
+- **인증**: Cognito User Pool + ALB `authenticate-cognito` 리스너 액션 — 기본 액션(대시보드)과 `/vscode*` 규칙 양쪽에 부착 (ADR-009)
+- **인프라**: CDK (`infra-cdk/`) → ALB (HTTPS, ACM 서울 리전) → EC2 (t4g.xlarge, ARM64, Private Subnet)
 - **라우팅**: `/` = 대시보드(:3000), `/vscode` = nginx(:8889) → code-server(:8888), `/awsops*` = 루트 리다이렉트
 - **다국어**: 한국어/영어/중국어(간체) — 앱은 `src/lib/i18n` (React Context + localStorage), 가이드는 Docusaurus i18n (ko/en/zh-Hans)
+
+## 이 계정의 제약 (815090125359)
+
+업스트림 기본값이 이 계정에서 통하지 않는 지점. 상세는 `docs/runbooks/plick-deployment.md`.
+
+| 항목 | 상태 |
+|------|------|
+| Cost Explorer | ❌ 조직 SCP(`p-5soyo0ar`)가 `ce:GetCostAndUsage` 거부 — Cost 페이지·cost 라우트 사용 불가 |
+| Bedrock 모델 | Opus 4.7/4.8/5, Sonnet 5, Fable 5 **엔타이틀먼트 없음**. 사용 가능: Opus 4.6/4.5, Sonnet 4.6/4.5, Haiku 4.5 |
+| Anthropic 사용 사례 양식 | 제출 완료 (2026-09-10, 계정당 1회). 미제출 시 모든 Anthropic 모델이 `ResourceNotFoundException` |
+| 계정 성격 | AWS Innovation Sandbox 관리 대상 — 리스 만료 시 리소스 정리 가능. `data/config.json` 백업 필수 |
+| EKS / ECS | 클러스터 0개 — K8s 페이지는 비어 있음 |
 
 ## 현황 (v1.8.0)
 | 항목 | 수치 |
@@ -170,8 +182,16 @@ Step 10: 10-stop-all.sh                  전체 서비스 중지
 Step 11: 11-verify.sh                    검증 (헬스체크)
 Step 12: 12-setup-multi-account.sh       멀티 어카운트 설정 (선택, Aggregator + 교차 계정 IAM 역할)
 Step 13: 13-setup-steampipe-systemd.sh   Steampipe systemd 유닛 등록 (Restart=always, 부팅 시 자동 시작)
+Step 14: 14-setup-app-systemd.sh         Next.js systemd 유닛 등록 (awsops.service, Restart=always)
 ```
 ※ Step 13 적용 후 Steampipe는 반드시 `sudo systemctl {start|stop|restart} steampipe`로 관리 — CLI `steampipe service stop`은 Restart=always가 자동으로 되돌림.
+
+※ **Step 13·14는 선택이 아니다.** 없으면 Steampipe와 Next.js가 `nohup`으로 떠서 SSM 세션이
+끊기거나 재부팅되면 조용히 죽고, 아무도 되살리지 않는다. Next.js가 죽으면 ALB가 502를 내는데
+Steampipe는 멀쩡해서 원인을 찾기 어렵다.
+
+※ **CI/CD 배포와 설치 스크립트를 동시에 돌리지 말 것.** 같은 체크아웃에서 `git reset --hard`와
+`npm run build`가 겹치면 `.next`가 깨진다. `scripts/lib/deploy-lock.sh`가 상호 배제한다.
 
 ## AgentCore 알려진 이슈
 - Gateway Target: CLI 대신 Python/boto3 사용 (`mcp.lambda` + `credentialProviderConfigurations`)
@@ -182,6 +202,16 @@ Step 13: 13-setup-steampipe-systemd.sh   Steampipe systemd 유닛 등록 (Restar
 - AgentCore 응답: 최종 텍스트만 반환 → 응답 내용 키워드로 도구 추론
 - Memory 이름: 하이픈 불가, 언더스코어만 (`awsops_memory`). `eventExpiryDuration` 최대 365일.
 - Sign Out: 앱 쿠키만 지우면 ALB 세션이 살아있음 → `POST /api/auth`가 `AWSELBAuthSessionCookie-*` 만료 + Cognito 로그아웃 URL 반환
+- **Runtime 역할에 CloudWatch Logs 권한 필수.** 없으면 컨테이너가 기동에 실패하는데 로그 그룹조차
+  안 생겨 `"An error occurred when starting the runtime"` 만 보인다. 06a가 `Observability` 정책 부착.
+- **`mcp`는 `>=1.23,<2`로 고정.** `agent/streamable_http_sigv4.py`가 mcp 1.x 내부(`streamablehttp_client`,
+  `GetSessionIdCallback`)에 의존한다. 고정을 풀면 2.x가 설치되어 `ImportError`로 기동 실패.
+- **Gateway는 agent.py가 기동 시 boto3로 자동 탐색.** 하드코딩 URL 없음 → 6e가 패치할 것도 없다.
+  (`aws` CLI는 런타임 이미지에 없으므로 subprocess로 호출하면 안 된다.)
+- **`buildx --push`는 로컬 이미지 저장소를 갱신하지 않는다.** 이미지 내용 검증은 `docker rmi` 후
+  `docker pull`로 ECR에서 다시 받아서 할 것.
+- **Runtime 갱신은 `update-agent-runtime`.** 6a 재실행은 Runtime을 중복 생성한다.
+  `--role-arn`과 `--network-configuration`이 필수.
 
 ## 새 페이지 추가
 1. `information_schema.columns`로 컬럼명 확인 (JSONB 중첩 구조도 확인)
@@ -202,8 +232,8 @@ Step 13: 13-setup-steampipe-systemd.sh   Steampipe systemd 유닛 등록 (Restar
 
 # AWSops Dashboard v1.8.0 — Claude Context (English)
 
-> musinsa deployment, forked from upstream `awsops`. UI label and repo/stack/resource names all use the `awsops` prefix.
-> Environment constraints and redeploy gotchas: `docs/runbooks/musinsa-deployment.md` · project agent: `.claude/agents/awsops.md`
+> plick deployment, forked from upstream `awsops`. UI label and repo/stack/resource names all use the `awsops` prefix.
+> Environment constraints and redeploy gotchas: `docs/runbooks/plick-deployment.md` · project agent: `.claude/agents/awsops.md`
 
 ## Project Overview
 AWS + Kubernetes operations dashboard with real-time resource monitoring, network troubleshooting, CIS compliance, AI-powered analysis, external datasource integration, and AI comprehensive diagnosis. Built with Steampipe, Next.js 14, and Amazon Bedrock AgentCore.
@@ -212,10 +242,10 @@ AWS + Kubernetes operations dashboard with real-time resource monitoring, networ
 - **Frontend**: Next.js 14 (App Router) + Tailwind CSS dark theme + Recharts + React Flow
 - **Data**: Steampipe embedded PostgreSQL (port 9193) — 380+ AWS tables, 60+ K8s tables, multi-account Aggregator
 - **External Datasources**: Prometheus, Loki, Tempo, ClickHouse, Jaeger, Dynatrace, Datadog (SSRF-protected + allowlist)
-- **AI**: Bedrock Opus 4.8 (`global.anthropic.claude-opus-4-8`) + AgentCore Runtime (Strands) + 8 Gateways (125 MCP tools) + 19 Lambda
-- **AI Diagnosis**: 15-section Bedrock Opus 4.8 analysis + DOCX/MD/PDF export + auto-scheduling
-- **Auth**: Cognito User Pool + ALB `authenticate-cognito` listener action (org SCP blocks CloudFront — ADR-009)
-- **Infra**: CDK → ALB (HTTPS, regional ACM cert) → EC2 (t4g.2xlarge, Private Subnet)
+- **AI**: Bedrock Opus 4.6 (`global.anthropic.claude-opus-4-6-v1`) + AgentCore Runtime (Strands) + 8 Gateways (125 MCP tools) + 19 Lambda
+- **AI Diagnosis**: 15-section Bedrock Opus 4.6 analysis + DOCX/MD/PDF export + auto-scheduling
+- **Auth**: Cognito User Pool + ALB `authenticate-cognito` on both the default action (dashboard) and the `/vscode*` rule (ADR-009)
+- **Infra**: CDK → ALB (HTTPS, regional ACM cert) → EC2 (t4g.xlarge, ARM64, Private Subnet)
 - **Routing**: `/` = dashboard (:3000), `/vscode` = nginx (:8889) → code-server (:8888), `/awsops*` = redirect to root
 - **i18n**: Korean/English/Simplified-Chinese — app via `src/lib/i18n` (React Context + localStorage), guide via Docusaurus i18n (ko/en/zh-Hans)
 
@@ -369,6 +399,7 @@ Step 10: 10-stop-all.sh                  Stop all services
 Step 11: 11-verify.sh                    Verification (health check)
 Step 12: 12-setup-multi-account.sh       Multi-account setup (optional, Aggregator + cross-account IAM role)
 Step 13: 13-setup-steampipe-systemd.sh   Steampipe systemd unit (Restart=always, starts on boot)
+Step 14: 14-setup-app-systemd.sh         Next.js systemd unit (awsops.service, Restart=always)
 ```
 Note: after Step 13, manage Steampipe only via `sudo systemctl {start|stop|restart} steampipe` — a bare CLI `steampipe service stop` is auto-undone by Restart=always.
 

@@ -72,3 +72,29 @@ Route 53 (awsops.dev1.musinsa.io)
 2. **Keep Lambda@Edge, drop CloudFront** — not possible; Lambda@Edge only runs on CloudFront.
 3. **Self-hosted auth proxy (oauth2-proxy) on EC2** — more moving parts than the ALB's native
    action, with no benefit for this use case.
+
+## Postscript: the plick account (2026-09-10) / 후기: plick 계정
+
+This ADR was written for the musinsa `dev1` account, where an SCP denied CloudFront. The plick
+account (`815090125359`) does **not** block CloudFront — `cloudfront:ListDistributions` succeeds
+and five distributions already exist there. The decision still stands, for different reasons:
+
+이 ADR은 CloudFront가 SCP로 막힌 musinsa `dev1` 계정을 전제로 쓰였다. plick 계정
+(`815090125359`)은 CloudFront를 **막지 않는다** — 조회가 되고 배포도 5개 존재한다.
+그래도 결정은 유지한다. 이유가 다를 뿐이다.
+
+- The ALB action is one listener rule, not a CloudFront distribution plus a Lambda@Edge function
+  replicated to every edge location — less to build, less to keep in sync.
+- Lambda@Edge only deploys from `us-east-1`, adding a second region to the deployment story.
+- The dashboard is internal and low-traffic; there is nothing for a CDN to accelerate.
+
+What differs here: auth must be attached to **both** the default action (the dashboard, at the
+root) and the `/vscode*` rule. Upstream has these reversed, so a script that hardcodes the rule
+priority leaves code-server exposed. `05-setup-cognito.sh` now matches on the path pattern.
+
+이 계정에서 다른 점: 인증을 **기본 액션(루트의 대시보드)과 `/vscode*` 규칙 양쪽**에 붙여야 한다.
+업스트림은 이 둘이 반대라, 규칙 우선순위를 하드코딩한 스크립트는 code-server를 무인증으로 남긴다.
+`05-setup-cognito.sh`는 이제 path-pattern으로 찾는다.
+
+The SCP that does bite this account is a different one: `p-5soyo0ar` denies `ce:GetCostAndUsage`,
+so Cost Explorer is unavailable. See `docs/runbooks/plick-deployment.md`.

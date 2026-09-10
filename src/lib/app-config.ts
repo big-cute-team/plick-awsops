@@ -82,7 +82,7 @@ export interface AppConfig {
   notificationEnabled?: boolean;      // Enable auto-notification on report completion / 리포트 완료 시 자동 알림 활성화
   cognitoDomain?: string;             // Cognito hosted UI domain (e.g. "ops-dashboard-123.auth.ap-northeast-2.amazoncognito.com")
   cognitoClientId?: string;           // Cognito app client ID — used to build the logout URL
-  appUrl?: string;                    // Public app URL, logout redirect target (e.g. "https://awsops.dev1.musinsa.io/")
+  appUrl?: string;                    // Public app URL, logout redirect target (e.g. "https://awsops.plick.co.kr/")
 }
 
 const DEFAULT_CONFIG: AppConfig = {

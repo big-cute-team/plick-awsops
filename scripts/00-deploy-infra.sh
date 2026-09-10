@@ -492,14 +492,10 @@ echo -e "  ${DIM}  Graviton recommended: AgentCore Docker image is built for arm
 echo ""
 
 INSTANCE_TYPES=(
-    "t4g.2xlarge:ARM64 Graviton, 8 vCPU, 32GB  ★ 기본값 / default (권장 / recommended)"
-    "t4g.xlarge:ARM64 Graviton, 4 vCPU, 16GB"
-    "m7g.xlarge:ARM64 Graviton, 4 vCPU, 16GB (메모리 최적화 / memory optimized)"
-    "m7g.2xlarge:ARM64 Graviton, 8 vCPU, 32GB (메모리 최적화 / memory optimized)"
-    "t3.xlarge:x86_64 Intel, 4 vCPU, 16GB"
-    "t3.2xlarge:x86_64 Intel, 8 vCPU, 32GB"
-    "m7i.xlarge:x86_64 Intel, 4 vCPU, 16GB"
-    "m7i.2xlarge:x86_64 Intel, 8 vCPU, 32GB"
+    "t4g.xlarge:ARM64 Graviton, 4 vCPU, 16GB  ★ 기본값 / default (권장 / recommended)"
+    "t4g.2xlarge:ARM64 Graviton, 8 vCPU, 32GB"
+    "m7g.xlarge:ARM64 Graviton, 4 vCPU, 16GB (고정 성능 / sustained perf)"
+    "m7g.2xlarge:ARM64 Graviton, 8 vCPU, 32GB (고정 성능 / sustained perf)"
 )
 
 for i in "${!INSTANCE_TYPES[@]}"; do
@@ -515,19 +511,21 @@ ITYPE_CHOICE="${ITYPE_CHOICE:-1}"
 
 if [ "$ITYPE_CHOICE" = "0" ]; then
     read -p "  인스턴스 타입 입력 / Enter instance type: " INSTANCE_TYPE
-    INSTANCE_TYPE="${INSTANCE_TYPE:-t4g.2xlarge}"
+    INSTANCE_TYPE="${INSTANCE_TYPE:-t4g.xlarge}"
 elif [[ "$ITYPE_CHOICE" =~ ^[0-9]+$ ]] && [ "$ITYPE_CHOICE" -ge 1 ] && [ "$ITYPE_CHOICE" -le "${#INSTANCE_TYPES[@]}" ]; then
     INSTANCE_TYPE="${INSTANCE_TYPES[$((ITYPE_CHOICE-1))]%%:*}"
 else
-    INSTANCE_TYPE="t4g.2xlarge"
+    INSTANCE_TYPE="t4g.xlarge"
 fi
 
-# x86 인스턴스 경고 / Warn for x86 instances
+# ARM64 전용 — CDK가 ARM64 AMI를 고정으로 쓰고 CfnParameter allowedValues 도 ARM64만 허용한다.
+# ARM64 only — the CDK stack pins an ARM64 AMI and its allowedValues rejects x86 types.
 case "$INSTANCE_TYPE" in
-    t3.*|m7i.*|m5.*|c5.*|r5.*)
-        echo -e "  ${YELLOW}⚠ x86_64 인스턴스가 선택되었습니다.${NC}"
-        echo -e "  ${YELLOW}  AgentCore Docker 이미지를 x86_64로도 빌드해야 합니다.${NC}"
-        echo -e "  ${YELLOW}  WARNING: x86_64 selected. AgentCore Docker image needs x86_64 build too.${NC}"
+    t4g.*|m7g.*|c7g.*|r7g.*) ;;
+    *)
+        echo -e "  ${RED}오류: ARM64(Graviton) 타입만 지원합니다 / ERROR: ARM64 (Graviton) types only${NC}"
+        echo -e "  ${YELLOW}  CDK가 ARM64 AMI를 사용하므로 x86 타입은 부팅되지 않습니다.${NC}"
+        exit 1
         ;;
 esac
 
@@ -589,8 +587,8 @@ if [ -z "$CUSTOM_DOMAIN" ]; then
     echo ""
     echo -e "  ${CYAN}커스텀 도메인 설정 (필수) / Custom domain (required)${NC}"
     echo -e "  Route 53 호스팅 존이 있어야 합니다 / Requires Route 53 hosted zone"
-    read -p "  도메인 [awsops.dev1.musinsa.io]: " CUSTOM_DOMAIN
-    CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-awsops.dev1.musinsa.io}"
+    read -p "  도메인 [awsops.plick.co.kr]: " CUSTOM_DOMAIN
+    CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-awsops.plick.co.kr}"
 fi
 
 echo ""

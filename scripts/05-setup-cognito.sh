@@ -19,7 +19,7 @@ set -e
 #   Environment variables:                                                     #
 #     APP_DOMAIN             - App domain [auto: CFN DashboardURL output]      #
 #     ADMIN_EMAIL            - Admin email [admin@awsops.local]                #
-#     ADMIN_PASSWORD         - Admin password [!234Qwer]                       #
+#     ADMIN_PASSWORD         - Admin password [미지정 시 무작위 생성 / random]      #
 #     COGNITO_DOMAIN_PREFIX  - Domain prefix [ops-dashboard-<account>]         #
 #                                                                              #
 #   Known issues handled:                                                      #
@@ -38,7 +38,16 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/nu
 
 APP_DOMAIN="${APP_DOMAIN:-}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@awsops.local}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-!234Qwer}"
+# 기본 비밀번호를 코드에 두지 않는다 — 이 저장소는 공개되어 있어, 하드코딩된 값은
+# 곧바로 대시보드 로그인 자격이 된다. 미지정 시 매 실행마다 무작위로 생성하고 요약에 출력한다.
+# No hardcoded default: this repo is public, so a fixed password is a working dashboard
+# credential for anyone reading it. Generate a random one per run and print it in the summary.
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+ADMIN_PASSWORD_GENERATED="false"
+if [ -z "$ADMIN_PASSWORD" ]; then
+    ADMIN_PASSWORD="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)"
+    ADMIN_PASSWORD_GENERATED="true"
+fi
 # Cognito 도메인은 전체 AWS에서 고유해야 함 → 계정 ID 포함
 # Cognito domain must be globally unique → include account ID
 COGNITO_DOMAIN_PREFIX="${COGNITO_DOMAIN_PREFIX:-ops-dashboard-${ACCOUNT_ID}}"
@@ -58,7 +67,7 @@ if [ -z "$APP_DOMAIN" ]; then
 fi
 if [ -z "$APP_DOMAIN" ] || [ "$APP_DOMAIN" = "None" ]; then
     echo -e "${RED}오류: 앱 도메인을 확인할 수 없습니다. / ERROR: Cannot determine app domain.${NC}"
-    echo "  export APP_DOMAIN='awsops.dev1.musinsa.io'"
+    echo "  export APP_DOMAIN='awsops.plick.co.kr'"
     exit 1
 fi
 
@@ -91,7 +100,7 @@ POOL_ID=$(aws cognito-idp create-user-pool \
     --auto-verified-attributes email \
     --username-attributes email \
     --mfa-configuration OFF \
-    --user-pool-tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
+    --user-pool-tags Project=awsops,Environment=dev,ManagedBy=script \
     --policies '{
         "PasswordPolicy": {
             "MinimumLength": 8,
@@ -190,11 +199,17 @@ aws elbv2 modify-listener --listener-arn "$LISTENER_ARN" --region "$REGION" \
     --default-actions \
     "Type=authenticate-cognito,Order=1,AuthenticateCognitoConfig={${AUTH_CONFIG}}" \
     "Type=forward,Order=2,TargetGroupArn=${DEFAULT_TG}" > /dev/null
-echo "  Default action (VSCode): Cognito auth attached"
+echo "  Default action (Dashboard): Cognito auth attached"
 
-# /awsops* 규칙 (priority 1) / Dashboard rule at priority 1
+# /vscode* 규칙 — 우선순위를 하드코딩하지 않고 path-pattern 조건으로 찾는다.
+#   이 배포판은 기본 액션이 대시보드(:3000)이고 /vscode* 가 별도 규칙(현재 priority 10)이다.
+#   업스트림은 반대(기본=VSCode, /awsops*=대시보드)라 우선순위 1을 하드코딩했었고,
+#   그래서 이 포크에서는 /vscode 에 인증이 붙지 않은 채 지나갔다. 조건으로 찾도록 바꾼다.
+# Find the /vscode* rule by its path-pattern instead of a hardcoded priority. In this fork
+# the default action is the dashboard and /vscode* is a separate rule; upstream had it the
+# other way round, so the old priority-1 lookup silently left /vscode unauthenticated.
 RULE_INFO=$(aws elbv2 describe-rules --listener-arn "$LISTENER_ARN" --region "$REGION" \
-    --query "Rules[?Priority=='1'] | [0].[RuleArn, Actions[?Type=='forward'].TargetGroupArn | [0]]" \
+    --query "Rules[?contains(to_string(Conditions[].Values[]), 'vscode')] | [0].[RuleArn, Actions[?Type=='forward'].TargetGroupArn | [0]]" \
     --output text)
 RULE_ARN=$(echo "$RULE_INFO" | awk '{print $1}')
 RULE_TG=$(echo "$RULE_INFO" | awk '{print $2}')
@@ -204,9 +219,9 @@ if [ -n "$RULE_ARN" ] && [ "$RULE_ARN" != "None" ]; then
         --actions \
         "Type=authenticate-cognito,Order=1,AuthenticateCognitoConfig={${AUTH_CONFIG}}" \
         "Type=forward,Order=2,TargetGroupArn=${RULE_TG}" > /dev/null
-    echo "  Dashboard rule (/awsops*): Cognito auth attached"
+    echo "  VSCode rule (/vscode*): Cognito auth attached"
 else
-    echo -e "  ${YELLOW}WARN: /awsops* rule (priority 1) not found — dashboard auth NOT attached${NC}"
+    echo -e "  ${YELLOW}WARN: /vscode* rule not found — VSCode is reachable without Cognito${NC}"
 fi
 
 # -- [6/6] Verify --------------------------------------------------------------
@@ -229,7 +244,13 @@ echo ""
 echo "  User Pool ID:     $POOL_ID"
 echo "  Client ID:        $CLIENT_ID"
 echo "  Cognito Domain:   $COGNITO_DOMAIN"
-echo "  Admin Login:      $ADMIN_EMAIL / ********"
+if [ "$ADMIN_PASSWORD_GENERATED" = "true" ]; then
+    echo "  Admin Login:      $ADMIN_EMAIL / $ADMIN_PASSWORD"
+    echo -e "  ${YELLOW}                    ^ 자동 생성됨 — 지금 비밀번호 관리자에 저장하세요.${NC}"
+    echo -e "  ${YELLOW}                      Auto-generated; save it now (not shown again).${NC}"
+else
+    echo "  Admin Login:      $ADMIN_EMAIL / ******** (ADMIN_PASSWORD 환경변수)"
+fi
 echo "  Dashboard:        https://${APP_DOMAIN}/"
 echo "  VSCode:           https://${APP_DOMAIN}/"
 echo ""

@@ -19,16 +19,19 @@ export class AwsopsStack extends cdk.Stack {
     // -------------------------------------------------------
     // Parameters
     // -------------------------------------------------------
+    // machineImage 가 ARM64 AMI로 고정되어 있으므로(아래 AWSopsServer 참조) ARM64 계열만 허용한다.
+    // 예전에는 t3.*/m7i.* 같은 x86 타입도 목록에 있었지만, 그걸 고르면 ARM64 AMI로 부팅을 시도해
+    // 인스턴스가 뜨지 않았다. AgentCore Docker 이미지도 arm64로 빌드하므로 ARM64가 전제다.
+    // Only ARM64 families: machineImage below is pinned to an ARM64 AMI, so an x86 choice
+    // would boot an ARM64 image and fail. AgentCore also builds arm64 Docker images.
     const instanceType = new cdk.CfnParameter(this, 'InstanceType', {
       type: 'String',
-      default: 't4g.2xlarge',
+      default: 't4g.xlarge',
       allowedValues: [
         't4g.xlarge', 't4g.2xlarge',
-        't3.large', 't3.xlarge', 't3.2xlarge',
         'm7g.xlarge', 'm7g.2xlarge',
-        'm7i.xlarge', 'm7i.2xlarge',
       ],
-      description: 'EC2 instance type for the AWSops server',
+      description: 'EC2 instance type for the AWSops server (ARM64 / Graviton only)',
     });
 
     const vscodePassword = new cdk.CfnParameter(this, 'VSCodePassword', {
@@ -83,7 +86,7 @@ export class AwsopsStack extends cdk.Stack {
         ],
       });
       // 새 VPC에 이름 태그 / Tag new VPC with name
-      cdk.Tags.of(this.vpc).add('Name', 'jaeho.p-vpc');
+      cdk.Tags.of(this.vpc).add('Name', 'awsops-vpc');
     }
 
     // -------------------------------------------------------
@@ -260,12 +263,13 @@ export class AwsopsStack extends cdk.Stack {
     // -------------------------------------------------------
     // EC2 Instance (Private Subnet, ARM64 Graviton by default)
     // -------------------------------------------------------
-    // Determine AMI based on instance type (ARM64 for t4g/m7g, x86 otherwise)
+    // ARM64 고정. InstanceType 은 CfnParameter 라 synth 시점에 값을 알 수 없으므로
+    // AMI를 타입에 따라 분기할 수 없다. 대신 InstanceType 의 allowedValues 를
+    // ARM64 계열로 제한해 불일치를 원천 차단한다.
+    // Pinned to ARM64: InstanceType is a deploy-time CfnParameter, so the AMI cannot
+    // branch on it at synth time — allowedValues is restricted to ARM64 families instead.
     const al2023Arm64 = ec2.MachineImage.latestAmazonLinux2023({
       cpuType: ec2.AmazonLinuxCpuType.ARM_64,
-    });
-    const al2023x86 = ec2.MachineImage.latestAmazonLinux2023({
-      cpuType: ec2.AmazonLinuxCpuType.X86_64,
     });
 
     // UserData script for Node.js, Docker, Steampipe, code-server

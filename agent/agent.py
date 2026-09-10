@@ -65,7 +65,7 @@ GATEWAYS = _discover_gateways()
 
 # Bedrock Model / Bedrock 모델
 model = BedrockModel(
-    model_id="global.anthropic.claude-opus-4-8",
+    model_id="global.anthropic.claude-opus-4-6-v1",
     region_name="ap-northeast-2",
 )
 

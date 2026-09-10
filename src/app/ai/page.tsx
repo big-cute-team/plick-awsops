@@ -24,14 +24,15 @@ interface Message {
 
 // Bedrock pricing (USD per 1M tokens) / Bedrock 가격 (USD / 100만 토큰)
 const TOKEN_PRICING: Record<string, { input: number; output: number }> = {
-  'opus-4.8': { input: 5, output: 25 },
-  // 레거시 키 — 과거 대화 이력의 비용 표시용 / legacy keys for historical messages
-  'sonnet-4.6': { input: 3, output: 15 },
   'opus-4.6': { input: 15, output: 75 },
+  'sonnet-4.6': { input: 3, output: 15 },
+  'haiku-4.5': { input: 1, output: 5 },
+  // 레거시 키 — 과거 대화 이력의 비용 표시용 / legacy key for historical messages
+  'opus-4.8': { input: 5, output: 25 },
 };
 
 function calcTokenCost(model: string, inputTokens: number, outputTokens: number): string {
-  const pricing = TOKEN_PRICING[model] || TOKEN_PRICING['opus-4.8'];
+  const pricing = TOKEN_PRICING[model] || TOKEN_PRICING['opus-4.6'];
   const cost = (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
   return cost < 0.001 ? `$${cost.toFixed(5)}` : `$${cost.toFixed(4)}`;
 }
@@ -43,7 +44,7 @@ export default function AIPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [model, setModel] = useState<'opus-4.8'>('opus-4.8');
+  const [model, setModel] = useState<'opus-4.6' | 'sonnet-4.6' | 'haiku-4.5'>('opus-4.6');
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
@@ -240,7 +241,9 @@ export default function AIPage() {
         <div className="flex items-center gap-4">
           <select value={model} onChange={(e) => setModel(e.target.value as any)}
             className="bg-navy-900 border border-navy-600 rounded-lg px-3 py-2 text-xs text-gray-300 focus:ring-accent-cyan focus:border-accent-cyan">
-            <option value="opus-4.8">Claude Opus 4.8</option>
+            <option value="opus-4.6">Claude Opus 4.6</option>
+            <option value="sonnet-4.6">Claude Sonnet 4.6</option>
+            <option value="haiku-4.5">Claude Haiku 4.5</option>
           </select>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent-green/10 text-accent-green border border-accent-green/20">
             <span className="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse" />
@@ -365,7 +368,7 @@ export default function AIPage() {
                   <span>{t('ai.in')} <span className="text-accent-cyan">{(msg.inputTokens || 0).toLocaleString()}</span></span>
                   <span>{t('ai.out')} <span className="text-accent-green">{(msg.outputTokens || 0).toLocaleString()}</span></span>
                   <span className="text-gray-600">|</span>
-                  <span>{t('ai.cost')} <span className="text-accent-orange">{calcTokenCost(msg.model || 'opus-4.8', msg.inputTokens || 0, msg.outputTokens || 0)}</span></span>
+                  <span>{t('ai.cost')} <span className="text-accent-orange">{calcTokenCost(msg.model || 'opus-4.6', msg.inputTokens || 0, msg.outputTokens || 0)}</span></span>
                 </div>
               )}
             </div>

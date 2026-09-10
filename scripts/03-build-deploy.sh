@@ -117,9 +117,9 @@ nohup sh -c "PORT=3000 npm run start" > /tmp/awsops-server.log 2>&1 &
 sleep 3
 
 # Verify server is responding
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/awsops 2>/dev/null)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null)
 if [ "$HTTP_CODE" = "200" ]; then
-    echo -e "  ${GREEN}Server running: http://localhost:3000/awsops (HTTP 200)${NC}"
+    echo -e "  ${GREEN}Server running: http://localhost:3000/ (HTTP 200)${NC}"
 else
     echo -e "${RED}ERROR: Server not responding (HTTP $HTTP_CODE).${NC}"
     echo "  Log output:"
@@ -133,7 +133,7 @@ echo -e "${GREEN}===============================================================
 echo -e "${GREEN}   Step 3 Complete: Production server running${NC}"
 echo -e "${GREEN}=================================================================${NC}"
 echo ""
-echo "  Server:  http://localhost:3000/awsops"
+echo "  Server:  http://localhost:3000/"
 echo "  Log:     /tmp/awsops-server.log"
 echo "  Build:   production (npm run build + npm run start)"
 echo ""

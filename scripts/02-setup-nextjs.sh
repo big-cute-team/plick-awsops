@@ -172,8 +172,13 @@ echo -e "${CYAN}[5/5] Registering host account in config.json...${NC}"
 # Host account = 현재 EC2의 AWS 계정. profile 없이 EC2 기본 credentials 사용.
 # Host account = the current EC2's AWS account. No profile — uses EC2 default credentials.
 COST_ENABLED=$(python3 -c "import json; print('true' if json.load(open('${CONFIG_FILE}')).get('costEnabled', False) else 'false')" 2>/dev/null || echo "false")
+# 클러스터가 실제로 있는지로 판단한다. 예전에는 list-clusters 호출 성공 여부만 봤는데,
+# 읽기 권한만 있으면 클러스터가 0개여도 성공하므로 EKS 메뉴가 전부 0으로 켜졌다.
+# Gate on actual clusters, not on the API call succeeding: with read access the call
+# succeeds even with zero clusters, which used to enable an all-zero EKS section.
 EKS_ENABLED="false"
-aws eks list-clusters --output json >/dev/null 2>&1 && EKS_ENABLED="true"
+EKS_COUNT=$(aws eks list-clusters --query 'length(clusters)' --output text 2>/dev/null || echo "0")
+[ "$EKS_COUNT" != "0" ] && [ "$EKS_COUNT" != "None" ] && EKS_ENABLED="true"
 
 # Rename existing "connection "aws"" to "connection "aws_{ACCOUNT_ID}"" for aggregator support
 SPC_FILE="$HOME/.steampipe/config/aws.spc"

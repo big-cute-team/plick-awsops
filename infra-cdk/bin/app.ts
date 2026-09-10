@@ -6,11 +6,12 @@ import { AgentCoreStack } from '../lib/agentcore-stack';
 
 const app = new cdk.App();
 
-// CMDB 필수 태그 — 모든 스택의 태깅 가능한 리소스에 전파됨
-cdk.Tags.of(app).add('Realm', 'awsops');
-cdk.Tags.of(app).add('ServiceDomain', 'aws');
-cdk.Tags.of(app).add('ServiceComponent', 'awsops-poc');
-cdk.Tags.of(app).add('Environment', 'sandbox');
+// 공통 태그 — 모든 스택의 태깅 가능한 리소스에 전파됨
+// plick 계정(815090125359)에는 plick dev/prod 리소스가 함께 있으므로,
+// 비용 분리와 소유 구분을 위해 이 태그를 반드시 유지한다.
+cdk.Tags.of(app).add('Project', 'awsops');
+cdk.Tags.of(app).add('Environment', 'dev');
+cdk.Tags.of(app).add('ManagedBy', 'cdk');
 
 const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,

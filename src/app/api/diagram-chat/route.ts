@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
 const bedrockClient = new BedrockRuntimeClient({ region: 'ap-northeast-2' });
-const MODEL_ID = 'global.anthropic.claude-opus-4-8';
+const MODEL_ID = 'global.anthropic.claude-opus-4-6-v1';
 
 interface ChatMessage {
   role: 'user' | 'assistant';

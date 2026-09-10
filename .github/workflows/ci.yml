@@ -1,0 +1,38 @@
+name: CI
+
+# PR과 main 푸시에서 타입/린트/빌드를 검증한다. 배포는 deploy.yml 이 담당한다.
+# Validates lint + production build. Deployment lives in deploy.yml.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # EC2에서 빌드가 깨지는 걸 배포 전에 잡는다. 러너는 x64, EC2는 arm64지만
+      # 이 프로젝트에 네이티브 의존성이 없어 빌드 검증 용도로는 동일하게 동작한다.
+      # Catch build breakage before it reaches EC2. The runner is x64 and EC2 is arm64,
+      # but there are no native deps here, so the build is equivalent for validation.
+      - name: Production build
+        run: npm run build

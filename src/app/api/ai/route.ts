@@ -40,11 +40,16 @@ function getCodeInterpreterName(): string {
 
 // Available Bedrock models / 사용 가능한 Bedrock 모델
 // Seoul region uses global.* prefix for cross-region inference / 서울 리전은 global.* 접두사 사용
-// Opus 4.8 단일 모델 (레거시 키는 과거 요청 호환용) / single model; legacy keys kept for compatibility
+// 815090125359 계정에서 실제 호출 가능한 모델만 등록한다. Opus 4.7/4.8/5, Sonnet 5는
+// 계정 엔타이틀먼트가 없어 InvokeModel이 AccessDenied로 실패한다 (2026-09-10 확인).
+// Only models this account can actually invoke. Opus 4.7/4.8/5 and Sonnet 5 are not
+// entitled to this account and fail InvokeModel with AccessDenied (verified 2026-09-10).
 const MODELS: Record<string, string> = {
-  'opus-4.8': 'global.anthropic.claude-opus-4-8',
-  'sonnet-4.6': 'global.anthropic.claude-opus-4-8',
-  'opus-4.6': 'global.anthropic.claude-opus-4-8',
+  'opus-4.6': 'global.anthropic.claude-opus-4-6-v1',
+  'sonnet-4.6': 'global.anthropic.claude-sonnet-4-6',
+  'haiku-4.5': 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+  // 레거시 키 — 과거 대화 이력 호환용 / legacy key for historical messages
+  'opus-4.8': 'global.anthropic.claude-opus-4-6-v1',
 };
 
 // AWS SDK clients / AWS SDK 클라이언트

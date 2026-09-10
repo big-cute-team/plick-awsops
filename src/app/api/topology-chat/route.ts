@@ -10,7 +10,7 @@ import { applyPatch, PatchOp } from '@/lib/fossflow/patch';
 import { validateFossflowModel } from '@/lib/fossflow/validate';
 
 const bedrockClient = new BedrockRuntimeClient({ region: 'ap-northeast-2' });
-const MODEL_ID = 'global.anthropic.claude-opus-4-8';
+const MODEL_ID = 'global.anthropic.claude-opus-4-6-v1';
 const MAX_OPS = 200;
 
 interface ChatMessage {

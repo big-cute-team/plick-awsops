@@ -128,7 +128,7 @@ for entry in "${STANDARD_LAMBDAS[@]}"; do
         --handler "${HANDLER}.lambda_handler" \
         --role "$LAMBDA_ROLE_ARN" --zip-file "fileb:///tmp/${HANDLER}.zip" \
         --timeout 60 --memory-size 256 \
-        --tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
+        --tags Project=awsops,Environment=dev,ManagedBy=script \
         --region "$REGION" 2>/dev/null || \
     aws lambda update-function-code \
         --function-name "$FUNC_NAME" --zip-file "fileb:///tmp/${HANDLER}.zip" \
@@ -230,7 +230,7 @@ for FUNC in "awsops-steampipe-query:steampipe_query" "awsops-istio-mcp:aws_istio
         --handler "${HANDLER}.lambda_handler" \
         --role "$LAMBDA_ROLE_ARN" --zip-file "fileb:///tmp/${HANDLER}_vpc.zip" \
         --timeout 60 --memory-size 256 \
-        --tags Realm=awsops,ServiceDomain=aws,ServiceComponent=awsops-poc,Environment=sandbox \
+        --tags Project=awsops,Environment=dev,ManagedBy=script \
         --vpc-config "SubnetIds=$PRIVATE_SUBNETS,SecurityGroupIds=$LAMBDA_SG" \
         --environment "Variables={STEAMPIPE_HOST=$EC2_IP,STEAMPIPE_PORT=9193,STEAMPIPE_PASSWORD=$SP_PASS}" \
         --region "$REGION" 2>/dev/null || \

@@ -432,7 +432,12 @@ export class AwsopsStack extends cdk.Stack {
         },
       ],
     });
-    cdk.Tags.of(this.instance).add('Name', `${this.stackName}-AWSops-Server`);
+    // Name 태그는 위 instanceName('awsops-server')이 정한다. 예전에는 여기서
+    // `${stackName}-AWSops-Server` 로 덮어써서 둘이 어긋났고, Name 태그로 인스턴스를
+    // 찾는 배포 워크플로와 IAM 조건이 대상을 못 찾았다.
+    // The Name tag comes from instanceName above. This line used to overwrite it with
+    // `${stackName}-AWSops-Server`, which broke the deploy workflow and the IAM
+    // condition that both target the instance by its Name tag.
     cdk.Tags.of(this.instance).add('UserDataVersion', '2');
 
     // -------------------------------------------------------

@@ -22,6 +22,11 @@ set -e
 
 # -- Colors & common variables ------------------------------------------------
 GREEN='\033[0;32m'; RED='\033[0;31m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; NC='\033[0m'
+
+# 배포/설치 상호 배제 — CI/CD 배포와 겹치면 .next 가 깨진다.
+# Mutual exclusion with the CI/CD deploy; overlapping runs corrupt .next.
+source "$(cd "$(dirname "$0")" && pwd)/lib/deploy-lock.sh"
+acquire_deploy_lock "6c-tools" || exit 1
 WORK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "unknown")

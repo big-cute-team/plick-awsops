@@ -9,7 +9,7 @@ set -e
 #                                                                              #
 #   설정 대상 / Configures:                                                     #
 #     - data/config.json: agentRuntimeArn, codeInterpreterName (gitignored)   #
-#     - agent.py: 8 Gateway URLs (git 추적 대상 — 커밋 + Docker 재빌드 필요)   #
+#     - agent.py: 자동 탐색이면 건너뜀 / skipped when it auto-discovers        #
 #                                                                              #
 #   실행 조건 / Prerequisites:                                                  #
 #     - Step 6a (Runtime), 6b (Gateways), 6d (Code Interpreter) 완료          #
@@ -125,11 +125,25 @@ if [ ! -f "$AGENT_FILE" ]; then
     exit 1
 fi
 
-# 백업 / Backup
-cp "$AGENT_FILE" "${AGENT_FILE}.bak"
+# 이 버전의 agent.py 는 기동 시 list-gateways 로 Gateway URL을 직접 찾는다
+# (_discover_gateways). 그래서 하드코딩된 URL이 없고 패치할 것도 없다.
+# 예전 로직은 정규식으로 URL을 갈아끼우려다 GATEWAYS_JSON 예시가 적힌 '주석'만
+# 실제 게이트웨이 ID로 바꿔놓았다 — 동작에는 영향이 없지만 diff 만 지저분해졌다.
+# This agent.py discovers gateway URLs at startup via list-gateways
+# (_discover_gateways), so there is no hardcoded URL to patch. The old regex ended up
+# rewriting only the GATEWAYS_JSON example in a comment — harmless but noisy.
+if grep -q "_discover_gateways" "$AGENT_FILE"; then
+    echo "  agent.py 는 기동 시 Gateway를 자동 탐색합니다 — 수정 불필요."
+    echo "  agent.py auto-discovers gateways at startup; nothing to patch."
+    SKIP_AGENT_PATCH=true
+else
+    SKIP_AGENT_PATCH=false
+    cp "$AGENT_FILE" "${AGENT_FILE}.bak"
+fi
 
 # 각 Gateway URL 업데이트 / Update each Gateway URL
 for GW_KEY in network container iac data security monitoring cost ops; do
+    [ "$SKIP_AGENT_PATCH" = "true" ] && break
     GW_ID="${GW_MAP[$GW_KEY]}"
     if [ -n "$GW_ID" ]; then
         NEW_URL="https://${GW_ID}.gateway.bedrock-agentcore.${REGION}.amazonaws.com/mcp"
@@ -199,13 +213,15 @@ done
 echo ""
 echo "  변경된 것 / Changed:"
 echo "    - data/config.json  (agentRuntimeArn, codeInterpreterName) — gitignore 대상, 배포에도 유지됨"
-echo "    - agent/agent.py    (8 Gateway URLs) + agent.py.bak"
-echo ""
-echo -e "  ${YELLOW}주의: agent.py 는 git 추적 대상입니다.${NC}"
-echo -e "  ${YELLOW}  이 수정은 다음 배포의 'git reset --hard' 에 지워집니다. 커밋하세요:${NC}"
-echo "    git add agent/agent.py && git commit -m 'Point agent.py at this account's gateways'"
-echo -e "  ${YELLOW}  또한 agent.py 는 Docker 이미지에 구워지므로, 반영하려면 재빌드가 필요합니다:${NC}"
-echo "    bash scripts/06a-setup-agentcore-runtime.sh   # 이미지 재빌드 + Runtime 갱신"
+if [ "$SKIP_AGENT_PATCH" = "true" ]; then
+    echo "    - agent/agent.py    변경 없음 (기동 시 Gateway 자동 탐색) / unchanged, auto-discovers"
+else
+    echo "    - agent/agent.py    (Gateway URLs) + agent.py.bak"
+    echo ""
+    echo -e "  ${YELLOW}주의: agent.py 는 git 추적 대상이라 다음 배포에 지워집니다. 커밋하세요.${NC}"
+    echo -e "  ${YELLOW}  또 Docker 이미지에 구워지므로 반영하려면 재빌드가 필요합니다:${NC}"
+    echo "    bash scripts/06a-setup-agentcore-runtime.sh"
+fi
 echo ""
 echo -e "  ${BOLD}AI 채팅 테스트 / Test AI Chat:${NC}"
 echo "    브라우저에서 /ai 페이지 접속 / Open /ai in the browser"

@@ -26,15 +26,29 @@ GATEWAY_REGION = os.environ.get("AWS_REGION", "ap-northeast-2")
 SERVICE = "bedrock-agentcore"
 
 def _discover_gateways():
-    """AWS CLI로 Gateway URL 자동 감지 / Auto-discover gateway URLs via AWS CLI"""
+    """boto3로 Gateway URL 자동 감지 / Auto-discover gateway URLs via boto3
+
+    예전에는 subprocess 로 `aws` CLI 를 호출했는데, 런타임 이미지(python:3.11-slim)에는
+    AWS CLI 가 없다. 탐색이 항상 FileNotFoundError 로 실패했고, 예외를 삼키는 바람에
+    에이전트가 "도구 없음" 상태로 조용히 올라왔다. boto3 는 이미 이미지에 있다.
+
+    This used to shell out to the `aws` CLI, which is not installed in the runtime image
+    (python:3.11-slim) — discovery always died with FileNotFoundError, and because the
+    exception is swallowed the agent came up silently with no tools. boto3 is present.
+    """
     gateways = {}
     try:
-        import subprocess, json as _json
-        result = subprocess.run(
-            ["aws", "bedrock-agentcore-control", "list-gateways", "--region", GATEWAY_REGION, "--output", "json"],
-            capture_output=True, text=True, timeout=15
-        )
-        items = _json.loads(result.stdout).get("items", [])
+        import boto3
+        client = boto3.client("bedrock-agentcore-control", region_name=GATEWAY_REGION)
+        items = []
+        paginator_kwargs = {}
+        while True:
+            resp = client.list_gateways(**paginator_kwargs)
+            items.extend(resp.get("items", []))
+            token = resp.get("nextToken")
+            if not token:
+                break
+            paginator_kwargs = {"nextToken": token}
         for g in items:
             # awsops-network-gateway → network
             short = g["name"].replace("awsops-", "").replace("-gateway", "")

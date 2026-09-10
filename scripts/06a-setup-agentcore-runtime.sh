@@ -101,6 +101,29 @@ run_or_fail "IAM put-role-policy (ECRAndLambda)" \
         }]
     }"
 
+# AgentCore Runtime 은 컨테이너 로그를 CloudWatch 로 내보낸다. 이 권한이 없으면
+# 컨테이너가 기동 단계에서 실패하고, 정작 원인을 담은 로그 그룹조차 생기지 않아
+# "An error occurred when starting the runtime" 만 보이고 진단이 막힌다.
+# The runtime ships container logs to CloudWatch. Without these it fails during startup
+# and no log group is created either, leaving only "An error occurred when starting the
+# runtime" with nothing to diagnose from.
+run_or_fail "IAM put-role-policy (Observability)" \
+    aws iam put-role-policy --role-name AWSopsAgentCoreRole --policy-name Observability \
+    --policy-document '{
+        "Version": "2012-10-17",
+        "Statement": [
+            {"Effect": "Allow",
+             "Action": ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents",
+                        "logs:DescribeLogStreams","logs:DescribeLogGroups"],
+             "Resource": "*"},
+            {"Effect": "Allow",
+             "Action": ["xray:PutTraceSegments","xray:PutTelemetryRecords",
+                        "xray:GetSamplingRules","xray:GetSamplingTargets"],
+             "Resource": "*"},
+            {"Effect": "Allow", "Action": "cloudwatch:PutMetricData", "Resource": "*"}
+        ]
+    }'
+
 echo "  AWSopsAgentCoreRole: created"
 echo "  Waiting for IAM propagation (10s)..."
 sleep 10
